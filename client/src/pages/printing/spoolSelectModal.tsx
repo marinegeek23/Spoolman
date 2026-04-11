@@ -126,7 +126,7 @@ const SpoolSelectModal = ({ description, onContinue }: Props) => {
           tableLayout="auto"
           dataSource={dataSource}
           pagination={false}
-          scroll={{ y: 200 }}
+          scroll={{ y: 600 }}
           columns={removeUndefined([
             {
               width: 50,

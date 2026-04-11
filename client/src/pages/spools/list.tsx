@@ -1,4 +1,5 @@
 import {
+  DeleteOutlined,
   EditOutlined,
   EyeOutlined,
   FilterOutlined,
@@ -113,6 +114,9 @@ export const SpoolList = () => {
   // State for the switch to show archived spools
   const [showArchived, setShowArchived] = useSavedState("spoolList-showArchived", false);
 
+  // Print queue
+  const [printQueue, setPrintQueue] = useSavedState<number[]>("printQueue", []);
+
   // Fetch data from the API
   // To provide the live updates, we use a custom solution (useLiveify) instead of the built-in refine "liveMode" feature.
   // This is because the built-in feature does not call the liveProvider subscriber with a list of IDs, but instead
@@ -217,6 +221,11 @@ export const SpoolList = () => {
         { name: t("buttons.edit"), icon: <EditOutlined />, link: editUrl("spool", record.id) },
         { name: t("buttons.clone"), icon: <PlusSquareOutlined />, link: cloneUrl("spool", record.id) },
         { name: t("spool.titles.adjust"), icon: <ToolOutlined />, onClick: () => openSpoolAdjustModal(record) },
+        {
+          name: t("printing.qrcode.button"),
+          icon: <PrinterOutlined />,
+          onClick: () => navigate(`print?spools=${record.id}`),
+        },
       ];
       if (record.archived) {
         actions.push({
@@ -269,6 +278,36 @@ export const SpoolList = () => {
           >
             {t("printing.qrcode.button")}
           </Button>
+          {printQueue.length > 0 && (
+            <Dropdown
+              trigger={["click"]}
+              menu={{
+                items: [
+                  {
+                    key: "print",
+                    label: t("printing.qrcode.button"),
+                    icon: <PrinterOutlined />,
+                    onClick: () => {
+                      const params = new URLSearchParams();
+                      printQueue.forEach((id) => params.append("spools", id.toString()));
+                      navigate(`print?${params.toString()}`);
+                    },
+                  },
+                  {
+                    key: "clear",
+                    label: t("printing.printQueue.clearQueue"),
+                    icon: <DeleteOutlined />,
+                    danger: true,
+                    onClick: () => setPrintQueue([]),
+                  },
+                ],
+              }}
+            >
+              <Button type="primary" icon={<PrinterOutlined />}>
+                {t("printing.printQueue.button", { count: printQueue.length })}
+              </Button>
+            </Dropdown>
+          )}
           <Button
             type="primary"
             icon={<InboxOutlined />}

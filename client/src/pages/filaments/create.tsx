@@ -1,10 +1,10 @@
-import { Create, useForm, useSelect } from "@refinedev/antd";
+import { Create, useForm, useSelect, useThemedLayoutContext } from "@refinedev/antd";
 import { HttpError, IResourceComponentsProps, useInvalidate, useTranslate } from "@refinedev/core";
-import { Button, ColorPicker, Form, Input, InputNumber, Radio, Select, Typography } from "antd";
+import { Button, ColorPicker, Form, Input, InputNumber, Radio, Select, Typography, theme } from "antd";
 import TextArea from "antd/es/input/TextArea";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ExtraFieldFormItem, ParsedExtras, StringifiedExtras } from "../../components/extraFields";
 import { FilamentImportModal } from "../../components/filamentImportModal";
 import { MultiColorPicker } from "../../components/multiColorPicker";
@@ -18,6 +18,76 @@ import { IFilament, IFilamentParsedExtras } from "./model";
 
 dayjs.extend(utc);
 
+const NAMED_COLORS: [string, number, number, number][] = [
+  ["White", 255, 255, 255],
+  ["Black", 0, 0, 0],
+  ["Light Gray", 200, 200, 200],
+  ["Gray", 128, 128, 128],
+  ["Dark Gray", 64, 64, 64],
+  ["Silver", 192, 192, 192],
+  ["Red", 220, 20, 20],
+  ["Dark Red", 139, 0, 0],
+  ["Orange", 255, 100, 0],
+  ["Yellow", 255, 215, 0],
+  ["Lime", 0, 210, 80],
+  ["Green", 0, 160, 0],
+  ["Dark Green", 0, 80, 0],
+  ["Teal", 0, 130, 130],
+  ["Cyan", 0, 200, 210],
+  ["Sky Blue", 100, 170, 240],
+  ["Blue", 0, 80, 200],
+  ["Dark Blue", 0, 0, 140],
+  ["Purple", 120, 0, 180],
+  ["Violet", 148, 0, 211],
+  ["Pink", 255, 130, 180],
+  ["Hot Pink", 255, 20, 147],
+  ["Magenta", 210, 0, 170],
+  ["Brown", 140, 70, 20],
+  ["Beige", 210, 190, 150],
+  ["Gold", 255, 195, 0],
+];
+
+function hexToColorName(hex: string): string {
+  const h = hex.replace("#", "");
+  if (h.length !== 6) return "Color";
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  let closest = "Color";
+  let minDist = Infinity;
+  for (const [name, nr, ng, nb] of NAMED_COLORS) {
+    const rMean = (r + nr) / 2;
+    const dr = r - nr,
+      dg = g - ng,
+      db = b - nb;
+    const dist = Math.sqrt((2 + rMean / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rMean) / 256) * db * db);
+    if (dist < minDist) {
+      minDist = dist;
+      closest = name;
+    }
+  }
+  return closest;
+}
+
+function generateFilamentName(
+  vendor: string | undefined,
+  material: string | undefined,
+  colorType: "single" | "multi",
+  colorHex: string | undefined,
+  multiColorHexes: string | undefined,
+): string {
+  const parts: string[] = [];
+  if (vendor) parts.push(vendor);
+  if (material) parts.push(material);
+  if (colorType === "single" && colorHex) {
+    parts.push(hexToColorName(colorHex));
+  } else if (colorType === "multi" && multiColorHexes) {
+    const hexes = multiColorHexes.split(",").filter(Boolean);
+    if (hexes.length > 0) parts.push(hexes.map(hexToColorName).join("/"));
+  }
+  return parts.join(" ");
+}
+
 interface CreateOrCloneProps {
   mode: "create" | "clone";
 }
@@ -28,6 +98,9 @@ type IFilamentRequest = Omit<IFilamentParsedExtras, "id" | "registered"> & {
 
 export const FilamentCreate = (props: IResourceComponentsProps & CreateOrCloneProps) => {
   const t = useTranslate();
+  const { token } = theme.useToken();
+  const { siderCollapsed } = useThemedLayoutContext();
+  const siderWidth = siderCollapsed ? 80 : 200;
   const extraFields = useGetFields(EntityType.filament);
   const currency = useCurrency();
   const [isImportExtOpen, setIsImportExtOpen] = useState(false);
@@ -55,17 +128,58 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
     formProps.initialValues = ParsedExtras(formProps.initialValues);
   }
 
-  const handleSubmit = async (redirectTo: "list" | "create") => {
-    const values = StringifiedExtras(await form.validateFields());
-    await onFinish(values);
-    redirect(redirectTo);
-  };
+  const watchedMaterial = Form.useWatch("material", form);
+
+  const MATERIAL_DENSITIES: [string, number][] = [
+    ["PETG", 1.27],
+    ["PLA", 1.24],
+    ["ABS", 1.04],
+    ["ASA", 1.07],
+    ["PET", 1.38],
+    ["TPU", 1.21],
+    ["PA6", 1.13],
+  ];
+
+  useEffect(() => {
+    if (props.mode !== "create" || !watchedMaterial) return;
+    const upper = watchedMaterial.toUpperCase();
+    for (const [material, density] of MATERIAL_DENSITIES) {
+      if (upper.includes(material)) {
+        form.setFieldValue("density", density);
+        break;
+      }
+    }
+  }, [watchedMaterial]);
 
   const { selectProps: vendorSelect } = useSelect<IVendor>({
     resource: "vendor",
     optionLabel: "name",
     pagination: { mode: "off" },
   });
+
+  const watchedColorHex = Form.useWatch("color_hex", form);
+  const watchedMultiColorHexes = Form.useWatch("multi_color_hexes", form);
+  const watchedVendorId = Form.useWatch("vendor_id", form);
+  const lastAutoName = useRef("");
+
+  const watchedVendorName = vendorSelect.options?.find((o) => o.value === watchedVendorId)?.label as string | undefined;
+
+  useEffect(() => {
+    if (props.mode !== "create") return;
+    const newName = generateFilamentName(watchedVendorName, watchedMaterial, colorType, watchedColorHex, watchedMultiColorHexes);
+    if (!newName) return;
+    const currentName = (form.getFieldValue("name") as string) ?? "";
+    if (currentName && currentName !== lastAutoName.current) return;
+    if (newName === lastAutoName.current) return;
+    lastAutoName.current = newName;
+    form.setFieldValue("name", newName);
+  }, [watchedVendorName, watchedMaterial, colorType, watchedColorHex, watchedMultiColorHexes]);
+
+  const handleSubmit = async (redirectTo: "list" | "create") => {
+    const values = StringifiedExtras(await form.validateFields());
+    await onFinish(values);
+    redirect(redirectTo);
+  };
 
   const importFilament = async (filament: ExternalFilament) => {
     const vendor = await getOrCreateVendorFromExternal(filament.manufacturer);
@@ -103,17 +217,39 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
     });
   }, [form, extraFields.data, formProps.initialValues]);
 
+  const fixedBarStyle = {
+    position: "fixed" as const,
+    top: 64,
+    left: siderWidth,
+    right: 0,
+    zIndex: 10,
+    backgroundColor: token.colorBgContainer,
+    borderBottom: `1px solid ${token.colorBorderSecondary}`,
+    padding: "8px 24px",
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    transition: "left 0.2s",
+  };
+
   return (
-    <Create
-      title={props.mode === "create" ? t("filament.titles.create") : t("filament.titles.clone")}
-      isLoading={formLoading}
-      headerButtons={() => (
-        <>
-          <Button type="primary" onClick={() => setIsImportExtOpen(true)}>
-            {t("filament.form.import_external")}
-          </Button>
-        </>
-      )}
+    <>
+      <div style={fixedBarStyle}>
+        <Button type="primary" onClick={() => setIsImportExtOpen(true)}>
+          {t("filament.form.import_external")}
+        </Button>
+        <Button type="primary" onClick={() => handleSubmit("list")}>
+          {t("buttons.save")}
+        </Button>
+        <Button type="primary" onClick={() => handleSubmit("create")}>
+          {t("buttons.saveAndAdd")}
+        </Button>
+      </div>
+      <Create
+        title={props.mode === "create" ? t("filament.titles.create") : t("filament.titles.clone")}
+        isLoading={formLoading}
+        wrapperProps={{ style: { paddingTop: 48 } }}
+        headerButtons={() => null}
       footerButtons={() => (
         <>
           <Button type="primary" onClick={() => handleSubmit("list")}>
@@ -135,18 +271,6 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
       />
       <Form {...formProps} layout="vertical">
         <Form.Item
-          label={t("filament.fields.name")}
-          help={t("filament.fields_help.name")}
-          name={["name"]}
-          rules={[
-            {
-              required: false,
-            },
-          ]}
-        >
-          <Input maxLength={64} />
-        </Form.Item>
-        <Form.Item
           label={t("filament.fields.vendor")}
           name={["vendor_id"]}
           rules={[
@@ -167,6 +291,18 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
               typeof option?.label === "string" && option?.label.toLowerCase().includes(input.toLowerCase())
             }
           />
+        </Form.Item>
+        <Form.Item
+          label={t("filament.fields.material")}
+          help={t("filament.fields_help.material")}
+          name={["material"]}
+          rules={[
+            {
+              required: false,
+            },
+          ]}
+        >
+          <Input maxLength={64} />
         </Form.Item>
         <Form.Item label={t("filament.fields.color_hex")}>
           <Radio.Group
@@ -225,9 +361,9 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
           </Form.Item>
         )}
         <Form.Item
-          label={t("filament.fields.material")}
-          help={t("filament.fields_help.material")}
-          name={["material"]}
+          label={t("filament.fields.name")}
+          help={t("filament.fields_help.name")}
+          name={["name"]}
           rules={[
             {
               required: false,
@@ -272,6 +408,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
         <Form.Item
           label={t("filament.fields.diameter")}
           name={["diameter"]}
+          initialValue={1.75}
           rules={[
             {
               required: true,
@@ -365,7 +502,8 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
           <ExtraFieldFormItem key={index} field={field} />
         ))}
       </Form>
-    </Create>
+      </Create>
+    </>
   );
 };
 

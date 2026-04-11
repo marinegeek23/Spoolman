@@ -1,7 +1,7 @@
 import { MinusOutlined, PlusOutlined } from "@ant-design/icons";
-import { Create, useForm } from "@refinedev/antd";
+import { Create, useForm, useThemedLayoutContext } from "@refinedev/antd";
 import { HttpError, IResourceComponentsProps, useTranslate } from "@refinedev/core";
-import { Alert, Button, DatePicker, Divider, Form, Input, InputNumber, Radio, Select, Typography } from "antd";
+import { Alert, Button, Checkbox, DatePicker, Divider, Form, Input, InputNumber, Radio, Select, Typography, theme } from "antd";
 import TextArea from "antd/es/input/TextArea";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -13,6 +13,7 @@ import { useLocations } from "../locations/functions";
 import "../../utils/overrides.css";
 import { formatNumberOnUserInput, numberParser, numberParserAllowEmpty } from "../../utils/parsing";
 import { EntityType, useGetFields } from "../../utils/queryFields";
+import { useSavedState } from "../../utils/saveload";
 import { getCurrencySymbol, useCurrency } from "../../utils/settings";
 import { createFilamentFromExternal } from "../filaments/functions";
 import { useGetFilamentSelectOptions } from "./functions";
@@ -30,6 +31,9 @@ type ISpoolRequest = Omit<ISpoolParsedExtras, "id" | "registered"> & {
 
 export const SpoolCreate = (props: IResourceComponentsProps & CreateOrCloneProps) => {
   const t = useTranslate();
+  const { token } = theme.useToken();
+  const { siderCollapsed } = useThemedLayoutContext();
+  const siderWidth = siderCollapsed ? 80 : 200;
   const extraFields = useGetFields(EntityType.spool);
   const currency = useCurrency();
 
@@ -121,9 +125,20 @@ export const SpoolCreate = (props: IResourceComponentsProps & CreateOrCloneProps
     if (quantity > 1) {
       const submit = Array(quantity).fill(values);
       // queue multiple creates this way for now Refine doesn't seem to map Arrays to createMany or multiple creates like it says it does
-      submit.forEach(async (r) => await onFinish(r));
+      const results = await Promise.all(submit.map((r) => onFinish(r)));
+      if (addToPrintQueue) {
+        const newIds = results
+          .filter((r): r is { data: ISpool } => r != null && "data" in r)
+          .map((r) => r.data.id);
+        if (newIds.length > 0) {
+          setPrintQueue((prev) => [...prev, ...newIds]);
+        }
+      }
     } else {
-      await onFinish(values);
+      const result = await onFinish(values);
+      if (addToPrintQueue && result && "data" in result) {
+        setPrintQueue((prev) => [...prev, result.data.id]);
+      }
     }
 
     redirect(redirectTo);
@@ -180,6 +195,9 @@ export const SpoolCreate = (props: IResourceComponentsProps & CreateOrCloneProps
   }
 
   const [quantity, setQuantity] = useState(1);
+  const [addToPrintQueue, setAddToPrintQueue] = useState(false);
+  const [, setPrintQueue] = useSavedState<number[]>("printQueue", []);
+
   const incrementQty = () => {
     setQuantity(quantity + 1);
   };
@@ -249,12 +267,53 @@ export const SpoolCreate = (props: IResourceComponentsProps & CreateOrCloneProps
     }
   }, [selectedFilament]);
 
+  const fixedBarStyle = {
+    position: "fixed" as const,
+    top: 64,
+    left: siderWidth,
+    right: 0,
+    zIndex: 10,
+    backgroundColor: token.colorBgContainer,
+    borderBottom: `1px solid ${token.colorBorderSecondary}`,
+    padding: "8px 24px",
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    transition: "left 0.2s",
+  };
+
   return (
-    <Create
-      title={props.mode === "create" ? t("spool.titles.create") : t("spool.titles.clone")}
-      isLoading={formLoading}
-      footerButtons={() => (
+    <>
+      <div style={fixedBarStyle}>
+        <Checkbox checked={addToPrintQueue} onChange={(e) => setAddToPrintQueue(e.target.checked)}>
+          {t("spool.form.add_to_print_queue")}
+        </Checkbox>
+        <div style={{ display: "flex", backgroundColor: "#141414", border: "1px solid #424242", borderRadius: "6px" }}>
+          <Button type="text" style={{ padding: 0, width: 32, height: 32 }} onClick={decrementQty}>
+            <MinusOutlined />
+          </Button>
+          <InputNumber name="Quantity" min={1} controls={false} value={quantity} />
+          <Button type="text" style={{ padding: 0, width: 32, height: 32 }} onClick={incrementQty}>
+            <PlusOutlined />
+          </Button>
+        </div>
+        <Button type="primary" onClick={() => handleSubmit("list")}>
+          {t("buttons.save")}
+        </Button>
+        <Button type="primary" onClick={() => handleSubmit("create")}>
+          {t("buttons.saveAndAdd")}
+        </Button>
+      </div>
+      <Create
+        title={props.mode === "create" ? t("spool.titles.create") : t("spool.titles.clone")}
+        isLoading={formLoading}
+        wrapperProps={{ style: { paddingTop: 48 } }}
+        headerButtons={() => null}
+        footerButtons={() => (
         <>
+          <Checkbox checked={addToPrintQueue} onChange={(e) => setAddToPrintQueue(e.target.checked)}>
+            {t("spool.form.add_to_print_queue")}
+          </Checkbox>
           <div
             style={{ display: "flex", backgroundColor: "#141414", border: "1px solid #424242", borderRadius: "6px" }}
           >
@@ -273,8 +332,8 @@ export const SpoolCreate = (props: IResourceComponentsProps & CreateOrCloneProps
             {t("buttons.saveAndAdd")}
           </Button>
         </>
-      )}
-    >
+        )}
+      >
       <Form {...formProps} layout="vertical">
         <Form.Item
           label={t("spool.fields.first_used")}
@@ -499,6 +558,7 @@ export const SpoolCreate = (props: IResourceComponentsProps & CreateOrCloneProps
         ))}
       </Form>
     </Create>
+  </>
   );
 };
 

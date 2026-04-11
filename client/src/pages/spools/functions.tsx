@@ -150,7 +150,7 @@ export function useGetFilamentSelectOptions() {
           is_internal: true,
         };
       }) ?? [];
-    data.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
+    data.sort((a, b) => (b.value as number) - (a.value as number));
     return data;
   }, [internalFilaments.data?.data]);
 
