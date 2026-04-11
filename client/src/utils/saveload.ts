@@ -34,7 +34,7 @@ export function useInitialTableState(tableId: string): TableState {
 
     const sorters = savedSorters ? JSON.parse(savedSorters) : [{ field: "id", order: "asc" }];
     const filters = savedFilters ? JSON.parse(savedFilters) : [];
-    const pagination = savedPagination ? JSON.parse(savedPagination) : { page: 1, pageSize: 20 };
+    const pagination = savedPagination ? JSON.parse(savedPagination) : { page: 1, pageSize: 100 };
     const showColumns = savedShowColumns ? JSON.parse(savedShowColumns) : undefined;
     return { sorters, filters, pagination, showColumns };
   });
@@ -68,7 +68,7 @@ export function useStoreInitialState(tableId: string, state: TableState) {
   }, [tableId, state.filters]);
 
   useEffect(() => {
-    if (JSON.stringify(state.pagination) != JSON.stringify({ current: 1, pageSize: 20 })) {
+    if (JSON.stringify(state.pagination) != JSON.stringify({ current: 1, pageSize: 100 })) {
       if (isLocalStorageAvailable) {
         localStorage.setItem(`${tableId}-pagination`, JSON.stringify(state.pagination));
       }

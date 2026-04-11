@@ -1,10 +1,12 @@
 import { Create, useForm, useSelect, useThemedLayoutContext } from "@refinedev/antd";
 import { HttpError, IResourceComponentsProps, useInvalidate, useTranslate } from "@refinedev/core";
-import { Button, ColorPicker, Form, Input, InputNumber, Radio, Select, Typography, theme } from "antd";
+import { Button, Checkbox, Col, ColorPicker, Divider, Form, Input, InputNumber, Radio, Row, Select, Typography, theme } from "antd";
 import TextArea from "antd/es/input/TextArea";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import { useEffect, useRef, useState } from "react";
+import { useSavedState } from "../../utils/saveload";
+import { getAPIURL } from "../../utils/url";
 import { ExtraFieldFormItem, ParsedExtras, StringifiedExtras } from "../../components/extraFields";
 import { FilamentImportModal } from "../../components/filamentImportModal";
 import { MultiColorPicker } from "../../components/multiColorPicker";
@@ -175,9 +177,33 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
     form.setFieldValue("name", newName);
   }, [watchedVendorName, watchedMaterial, colorType, watchedColorHex, watchedMultiColorHexes]);
 
+  const [spoolQuantity, setSpoolQuantity] = useState(1);
+  const [addToPrintQueue, setAddToPrintQueue] = useState(true);
+  const [, setPrintQueue] = useSavedState<number[]>("printQueue", []);
+
   const handleSubmit = async (redirectTo: "list" | "create") => {
     const values = StringifiedExtras(await form.validateFields());
-    await onFinish(values);
+    const result = await onFinish(values);
+    const filamentId = (result as { data?: { id?: number } })?.data?.id;
+
+    if (filamentId && spoolQuantity > 0) {
+      const spoolIds: number[] = [];
+      for (let i = 0; i < spoolQuantity; i++) {
+        const res = await fetch(getAPIURL() + "/spool", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filament_id: filamentId }),
+        });
+        if (res.ok) {
+          const spool = await res.json();
+          if (spool?.id) spoolIds.push(spool.id);
+        }
+      }
+      if (addToPrintQueue && spoolIds.length > 0) {
+        setPrintQueue((prev) => [...prev, ...spoolIds]);
+      }
+    }
+
     redirect(redirectTo);
   };
 
@@ -372,128 +398,96 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
         >
           <Input maxLength={64} />
         </Form.Item>
-        <Form.Item
-          label={t("filament.fields.price")}
-          help={t("filament.fields_help.price")}
-          name={["price"]}
-          rules={[
-            {
-              required: false,
-              type: "number",
-              min: 0,
-            },
-          ]}
-        >
+        <Row gutter={24}>
+          <Col xs={24} sm={12}>
+            <Form.Item
+              label={t("filament.fields.density")}
+              name={["density"]}
+              rules={[{ required: true, type: "number", min: 0, max: 100 }]}
+            >
+              <InputNumber addonAfter="g/cm³" precision={2} formatter={formatNumberOnUserInput} parser={numberParser} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              label={t("filament.fields.diameter")}
+              name={["diameter"]}
+              initialValue={1.75}
+              rules={[{ required: true, type: "number", min: 0, max: 10 }]}
+            >
+              <InputNumber addonAfter="mm" precision={2} formatter={formatNumberOnUserInput} parser={numberParser} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              label={t("filament.fields.weight")}
+              help={t("filament.fields_help.weight")}
+              name={["weight"]}
+              initialValue={1000}
+              rules={[{ required: false, type: "number", min: 0 }]}
+            >
+              <InputNumber addonAfter="g" precision={1} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              label={t("filament.fields.spool_weight")}
+              help={t("filament.fields_help.spool_weight")}
+              name={["spool_weight"]}
+              rules={[{ required: false, type: "number", min: 0 }]}
+            >
+              <InputNumber addonAfter="g" precision={1} style={{ width: "100%" }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Form.Item
+              label={t("filament.fields.price")}
+              help={t("filament.fields_help.price")}
+              name={["price"]}
+              rules={[{ required: false, type: "number", min: 0 }]}
+            >
+              <InputNumber
+                addonAfter={getCurrencySymbol(undefined, currency)}
+                precision={2}
+                formatter={formatNumberOnUserInput}
+                parser={numberParserAllowEmpty}
+                style={{ width: "100%" }}
+              />
+            </Form.Item>
+            <Form.Item
+              label={t("filament.fields.settings_extruder_temp")}
+              name={["settings_extruder_temp"]}
+              rules={[{ required: false, type: "number", min: 0 }]}
+            >
+              <InputNumber addonAfter="°C" precision={0} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              label={t("filament.fields.settings_bed_temp")}
+              name={["settings_bed_temp"]}
+              rules={[{ required: false, type: "number", min: 0 }]}
+            >
+              <InputNumber addonAfter="°C" precision={0} style={{ width: "100%" }} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Divider />
+        <Typography.Title level={5}>Create Spools</Typography.Title>
+        <Form.Item label="Number of spools to create" style={{ marginBottom: 8 }}>
           <InputNumber
-            addonAfter={getCurrencySymbol(undefined, currency)}
-            precision={2}
-            formatter={formatNumberOnUserInput}
-            parser={numberParserAllowEmpty}
+            min={0}
+            max={100}
+            precision={0}
+            value={spoolQuantity}
+            onChange={(v) => setSpoolQuantity(v ?? 0)}
+            style={{ width: 120 }}
           />
         </Form.Item>
-        <Form.Item
-          label={t("filament.fields.density")}
-          name={["density"]}
-          rules={[
-            {
-              required: true,
-              type: "number",
-              min: 0,
-              max: 100,
-            },
-          ]}
-        >
-          <InputNumber addonAfter="g/cm³" precision={2} formatter={formatNumberOnUserInput} parser={numberParser} />
-        </Form.Item>
-        <Form.Item
-          label={t("filament.fields.diameter")}
-          name={["diameter"]}
-          initialValue={1.75}
-          rules={[
-            {
-              required: true,
-              type: "number",
-              min: 0,
-              max: 10,
-            },
-          ]}
-        >
-          <InputNumber addonAfter="mm" precision={2} formatter={formatNumberOnUserInput} parser={numberParser} />
-        </Form.Item>
-        <Form.Item
-          label={t("filament.fields.weight")}
-          help={t("filament.fields_help.weight")}
-          name={["weight"]}
-          rules={[
-            {
-              required: false,
-              type: "number",
-              min: 0,
-            },
-          ]}
-        >
-          <InputNumber addonAfter="g" precision={1} />
-        </Form.Item>
-        <Form.Item
-          label={t("filament.fields.spool_weight")}
-          help={t("filament.fields_help.spool_weight")}
-          name={["spool_weight"]}
-          rules={[
-            {
-              required: false,
-              type: "number",
-              min: 0,
-            },
-          ]}
-        >
-          <InputNumber addonAfter="g" precision={1} />
-        </Form.Item>
-        <Form.Item
-          label={t("filament.fields.settings_extruder_temp")}
-          name={["settings_extruder_temp"]}
-          rules={[
-            {
-              required: false,
-              type: "number",
-              min: 0,
-            },
-          ]}
-        >
-          <InputNumber addonAfter="°C" precision={0} />
-        </Form.Item>
-        <Form.Item
-          label={t("filament.fields.settings_bed_temp")}
-          name={["settings_bed_temp"]}
-          rules={[
-            {
-              required: false,
-              type: "number",
-              min: 0,
-            },
-          ]}
-        >
-          <InputNumber addonAfter="°C" precision={0} />
-        </Form.Item>
-        <Form.Item
-          label={t("filament.fields.article_number")}
-          help={t("filament.fields_help.article_number")}
-          name={["article_number"]}
-          rules={[
-            {
-              required: false,
-            },
-          ]}
-        >
-          <Input maxLength={64} />
-        </Form.Item>
+        {spoolQuantity > 0 && (
+          <Form.Item style={{ marginBottom: 0 }}>
+            <Checkbox checked={addToPrintQueue} onChange={(e) => setAddToPrintQueue(e.target.checked)}>
+              Add to print queue
+            </Checkbox>
+          </Form.Item>
+        )}
+        <Divider />
         <Form.Item
           label={t("filament.fields.comment")}
           name={["comment"]}
-          rules={[
-            {
-              required: false,
-            },
-          ]}
+          rules={[{ required: false }]}
         >
           <TextArea maxLength={1024} />
         </Form.Item>
