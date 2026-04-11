@@ -16,6 +16,7 @@ export enum FieldType {
 export enum EntityType {
   vendor = "vendor",
   filament = "filament",
+  filament_type = "filament_type",
   spool = "spool",
 }
 

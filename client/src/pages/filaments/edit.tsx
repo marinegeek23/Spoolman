@@ -9,6 +9,7 @@ import { MultiColorPicker } from "../../components/multiColorPicker";
 import { formatNumberOnUserInput, numberParser, numberParserAllowEmpty } from "../../utils/parsing";
 import { EntityType, useGetFields } from "../../utils/queryFields";
 import { getCurrencySymbol, useCurrency } from "../../utils/settings";
+import { IFilamentType } from "../filament_types/model";
 import { IVendor } from "../vendors/model";
 import { IFilament, IFilamentParsedExtras } from "./model";
 
@@ -27,7 +28,7 @@ export const FilamentEdit = () => {
   const currency = useCurrency();
   const [colorType, setColorType] = useState<"single" | "multi">("single");
 
-  const { formProps, saveButtonProps } = useForm<IFilament, HttpError, IFilament, IFilament>({
+  const { form, formProps, saveButtonProps } = useForm<IFilament, HttpError, IFilament, IFilament>({
     liveMode: "manual",
     onLiveEvent() {
       messageApi.warning(t("filament.form.filament_updated"));
@@ -38,6 +39,12 @@ export const FilamentEdit = () => {
   // Get vendor selection options
   const { selectProps } = useSelect<IVendor>({
     resource: "vendor",
+    optionLabel: "name",
+    pagination: { mode: "off" },
+  });
+
+  const { selectProps: filamentTypeSelect, query: filamentTypeQuery } = useSelect<IFilamentType>({
+    resource: "filament_type",
     optionLabel: "name",
     pagination: { mode: "off" },
   });
@@ -56,6 +63,28 @@ export const FilamentEdit = () => {
       setColorType("single");
     }
   }, [formProps.initialValues?.multi_color_hexes]);
+
+  // When filament types load, pre-select the one matching the current material value
+  useEffect(() => {
+    if (!filamentTypeQuery.data?.data || !formProps.initialValues?.material) return;
+    const match = filamentTypeQuery.data.data.find(
+      (ft) => ft.name.toLowerCase() === (formProps.initialValues?.material as string)?.toLowerCase(),
+    );
+    if (match) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (form as any).setFieldValue("filament_type_id", match.id);
+    }
+  }, [filamentTypeQuery.data?.data]);
+
+  const handleFilamentTypeChange = (value: number | undefined) => {
+    if (!value) return;
+    const ft = filamentTypeQuery.data?.data?.find((item) => item.id === value);
+    if (!ft) return;
+    form.setFieldValue("material", ft.name);
+    if (ft.density) form.setFieldValue("density", ft.density);
+    if (ft.settings_extruder_temp) form.setFieldValue("settings_extruder_temp", ft.settings_extruder_temp);
+    if (ft.settings_bed_temp) form.setFieldValue("settings_bed_temp", ft.settings_bed_temp);
+  };
 
   // Override the form's onFinish method to stringify the extra fields
   const originalOnFinish = formProps.onFinish;
@@ -115,10 +144,21 @@ export const FilamentEdit = () => {
         <Form.Item
           label={t("filament.fields.material")}
           help={t("filament.fields_help.material")}
-          name={["material"]}
+          name={["filament_type_id"]}
           rules={[{ required: false }]}
         >
-          <Input maxLength={64} />
+          <Select
+            {...filamentTypeSelect}
+            allowClear
+            placeholder="Select a material type"
+            filterOption={(input, option) =>
+              typeof option?.label === "string" && option.label.toLowerCase().includes(input.toLowerCase())
+            }
+            onChange={handleFilamentTypeChange as (value: unknown) => void}
+          />
+        </Form.Item>
+        <Form.Item name={["material"]} hidden>
+          <Input />
         </Form.Item>
         <Form.Item label={t("filament.fields.color_hex")}>
           <Radio.Group

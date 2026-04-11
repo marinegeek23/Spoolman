@@ -427,3 +427,35 @@ class SettingEvent(Event):
 
     payload: SettingKV = Field(description="Updated setting.")
     resource: Literal["setting"] = Field(description="Resource type.")
+
+
+class FilamentType(BaseModel):
+    id: int = Field(description="Unique internal ID of this filament type.")
+    registered: SpoolmanDateTime = Field(description="When the filament type was registered in the database. UTC Timezone.")
+    name: str = Field(max_length=64, description="Filament type name.", examples=["PLA"])
+    density: float | None = Field(None, ge=0, description="Default density of this filament type in g/cm³.", examples=[1.24])
+    settings_extruder_temp: int | None = Field(None, ge=0, description="Default extruder temperature, in °C.", examples=[210])
+    settings_bed_temp: int | None = Field(None, ge=0, description="Default bed temperature, in °C.", examples=[60])
+    comment: str | None = Field(None, max_length=1024, description="Free text comment about this filament type.")
+    extra: dict[str, str] = Field(description="Extra fields for this filament type.")
+
+    @staticmethod
+    def from_db(item: models.FilamentType) -> "FilamentType":
+        """Create a new Pydantic filament type object from a database filament type object."""
+        return FilamentType(
+            id=item.id,
+            registered=item.registered,
+            name=item.name,
+            density=item.density,
+            settings_extruder_temp=item.settings_extruder_temp,
+            settings_bed_temp=item.settings_bed_temp,
+            comment=item.comment,
+            extra={field.key: field.value for field in item.extra},
+        )
+
+
+class FilamentTypeEvent(Event):
+    """Event."""
+
+    payload: FilamentType = Field(description="Updated filament type.")
+    resource: Literal["filament_type"] = Field(description="Resource type.")

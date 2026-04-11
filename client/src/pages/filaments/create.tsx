@@ -15,6 +15,7 @@ import { ExternalFilament } from "../../utils/queryExternalDB";
 import { EntityType, useGetFields } from "../../utils/queryFields";
 import { getCurrencySymbol, useCurrency } from "../../utils/settings";
 import { getOrCreateVendorFromExternal } from "../vendors/functions";
+import { IFilamentType } from "../filament_types/model";
 import { IVendor } from "../vendors/model";
 import { IFilament, IFilamentParsedExtras } from "./model";
 
@@ -158,6 +159,24 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
     optionLabel: "name",
     pagination: { mode: "off" },
   });
+
+  const { selectProps: filamentTypeSelect, query: filamentTypeQuery } = useSelect<IFilamentType>({
+    resource: "filament_type",
+    optionLabel: "name",
+    pagination: { mode: "off" },
+  });
+
+  const watchedFilamentTypeId = Form.useWatch("filament_type_id", form);
+
+  useEffect(() => {
+    if (props.mode !== "create" || !watchedFilamentTypeId) return;
+    const ft = filamentTypeQuery.data?.data?.find((item) => item.id === watchedFilamentTypeId);
+    if (!ft) return;
+    form.setFieldValue("material", ft.name);
+    if (ft.density) form.setFieldValue("density", ft.density);
+    if (ft.settings_extruder_temp) form.setFieldValue("settings_extruder_temp", ft.settings_extruder_temp);
+    if (ft.settings_bed_temp) form.setFieldValue("settings_bed_temp", ft.settings_bed_temp);
+  }, [watchedFilamentTypeId]);
 
   const watchedColorHex = Form.useWatch("color_hex", form);
   const watchedMultiColorHexes = Form.useWatch("multi_color_hexes", form);
@@ -321,14 +340,20 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
         <Form.Item
           label={t("filament.fields.material")}
           help={t("filament.fields_help.material")}
-          name={["material"]}
-          rules={[
-            {
-              required: false,
-            },
-          ]}
+          name={["filament_type_id"]}
+          rules={[{ required: false }]}
         >
-          <Input maxLength={64} />
+          <Select
+            {...filamentTypeSelect}
+            allowClear
+            placeholder="Select or type a material type"
+            filterOption={(input, option) =>
+              typeof option?.label === "string" && option.label.toLowerCase().includes(input.toLowerCase())
+            }
+          />
+        </Form.Item>
+        <Form.Item name={["material"]} hidden>
+          <Input />
         </Form.Item>
         <Form.Item label={t("filament.fields.color_hex")}>
           <Radio.Group

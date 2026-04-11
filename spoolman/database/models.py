@@ -116,3 +116,29 @@ class SpoolField(Base):
     spool: Mapped["Spool"] = relationship(back_populates="extra")
     key: Mapped[str] = mapped_column(String(64), primary_key=True, index=True)
     value: Mapped[str] = mapped_column(Text())
+
+
+class FilamentType(Base):
+    __tablename__ = "filament_type"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    registered: Mapped[datetime] = mapped_column()
+    name: Mapped[str] = mapped_column(String(64))
+    density: Mapped[float | None] = mapped_column(comment="Default density in g/cm³.")
+    settings_extruder_temp: Mapped[int | None] = mapped_column(comment="Default extruder temperature.")
+    settings_bed_temp: Mapped[int | None] = mapped_column(comment="Default bed temperature.")
+    comment: Mapped[str | None] = mapped_column(String(1024))
+    extra: Mapped[list["FilamentTypeField"]] = relationship(
+        back_populates="filament_type",
+        cascade="save-update, merge, delete, delete-orphan",
+        lazy="joined",
+    )
+
+
+class FilamentTypeField(Base):
+    __tablename__ = "filament_type_field"
+
+    filament_type_id: Mapped[int] = mapped_column(ForeignKey("filament_type.id"), primary_key=True, index=True)
+    filament_type: Mapped["FilamentType"] = relationship(back_populates="extra")
+    key: Mapped[str] = mapped_column(String(64), primary_key=True, index=True)
+    value: Mapped[str] = mapped_column(Text())

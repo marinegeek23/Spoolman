@@ -295,6 +295,32 @@
             "vendor_updated": "This manufacturer has been updated by someone/something else since you opened this page. Saving will overwrite those changes!"
         }
     },
+    "filament_type": {
+        "filament_type": "Filament Types",
+        "fields": {
+            "id": "ID",
+            "name": "Name",
+            "density": "Density",
+            "settings_extruder_temp": "Extruder Temp",
+            "settings_bed_temp": "Bed Temp",
+            "registered": "Registered",
+            "comment": "Comment"
+        },
+        "fields_help": {
+            "density": "Default density for this filament type in g/cm³."
+        },
+        "titles": {
+            "create": "Create Filament Type",
+            "clone": "Clone Filament Type",
+            "edit": "Edit Filament Type",
+            "list": "Filament Types",
+            "show": "Show Filament Type",
+            "show_title": "[Filament Type #{{id}}] {{name}}"
+        },
+        "form": {
+            "filament_type_updated": "This filament type has been updated by someone/something else since you opened this page. Saving will overwrite those changes!"
+        }
+    },
     "home": {
         "home": "Home",
         "welcome": "Welcome to your Spoolman instance!",
