@@ -1,6 +1,7 @@
 import { Create, useForm, useSelect, useThemedLayoutContext } from "@refinedev/antd";
 import { HttpError, IResourceComponentsProps, useInvalidate, useTranslate } from "@refinedev/core";
-import { Button, Checkbox, Col, ColorPicker, Divider, Form, Input, InputNumber, Radio, Row, Select, Typography, theme } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
+import { Button, Checkbox, Col, ColorPicker, Divider, Form, Input, InputNumber, Modal, Radio, Row, Select, Typography, theme } from "antd";
 import TextArea from "antd/es/input/TextArea";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -200,6 +201,33 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
   const [addToPrintQueue, setAddToPrintQueue] = useState(true);
   const [, setPrintQueue] = useSavedState<number[]>("printQueue", []);
 
+  const [quickTypeOpen, setQuickTypeOpen] = useState(false);
+  const [quickTypeName, setQuickTypeName] = useState("");
+  const [quickTypeLoading, setQuickTypeLoading] = useState(false);
+
+  const handleQuickCreateFilamentType = async () => {
+    if (!quickTypeName.trim()) return;
+    setQuickTypeLoading(true);
+    try {
+      const res = await fetch(getAPIURL() + "/filament_type", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: quickTypeName.trim() }),
+      });
+      if (res.ok) {
+        const newType = await res.json();
+        await invalidate({ resource: "filament_type", invalidates: ["list"] });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (form as any).setFieldValue("filament_type_id", newType.id);
+        form.setFieldValue("material", newType.name);
+        setQuickTypeOpen(false);
+        setQuickTypeName("");
+      }
+    } finally {
+      setQuickTypeLoading(false);
+    }
+  };
+
   const handleSubmit = async (redirectTo: "list" | "create") => {
     const values = StringifiedExtras(await form.validateFields());
     const result = await onFinish(values);
@@ -340,21 +368,53 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
         <Form.Item
           label={t("filament.fields.material")}
           help={t("filament.fields_help.material")}
-          name={["filament_type_id"]}
-          rules={[{ required: false }]}
         >
-          <Select
-            {...filamentTypeSelect}
-            allowClear
-            placeholder="Select or type a material type"
-            filterOption={(input, option) =>
-              typeof option?.label === "string" && option.label.toLowerCase().includes(input.toLowerCase())
-            }
-          />
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <Form.Item name={["filament_type_id"]} rules={[{ required: false }]} noStyle>
+              <Select
+                {...filamentTypeSelect}
+                allowClear
+                placeholder="Select a material type"
+                style={{ width: "50%" }}
+                filterOption={(input, option) =>
+                  typeof option?.label === "string" && option.label.toLowerCase().includes(input.toLowerCase())
+                }
+              />
+            </Form.Item>
+            <Button
+              size="small"
+              icon={<PlusOutlined />}
+              onClick={() => setQuickTypeOpen(true)}
+            >
+              New Type
+            </Button>
+          </div>
         </Form.Item>
         <Form.Item name={["material"]} hidden>
           <Input />
         </Form.Item>
+        <Modal
+          title="Create Filament Type"
+          open={quickTypeOpen}
+          onCancel={() => { setQuickTypeOpen(false); setQuickTypeName(""); }}
+          onOk={handleQuickCreateFilamentType}
+          okText="Create"
+          confirmLoading={quickTypeLoading}
+          okButtonProps={{ disabled: !quickTypeName.trim() }}
+        >
+          <Form layout="vertical" style={{ marginTop: 16 }}>
+            <Form.Item label="Name" required>
+              <Input
+                value={quickTypeName}
+                onChange={(e) => setQuickTypeName(e.target.value)}
+                onPressEnter={handleQuickCreateFilamentType}
+                maxLength={64}
+                autoFocus
+                placeholder="e.g. PLA, PETG, ABS"
+              />
+            </Form.Item>
+          </Form>
+        </Modal>
         <Form.Item label={t("filament.fields.color_hex")}>
           <Radio.Group
             onChange={(value) => {
