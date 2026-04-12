@@ -620,7 +620,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
               Done
             </Button>
           }
-          destroyOnClose
+          destroyOnHidden
         >
           <SpoolQRCodePrintingDialog
             spoolIds={printModalSpoolIds}

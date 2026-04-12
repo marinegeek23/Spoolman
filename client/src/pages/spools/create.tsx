@@ -1,11 +1,11 @@
 import { MinusOutlined, PlusOutlined } from "@ant-design/icons";
 import { Create, useForm, useThemedLayoutContext } from "@refinedev/antd";
 import { HttpError, IResourceComponentsProps, useTranslate } from "@refinedev/core";
-import { Alert, Button, Checkbox, DatePicker, Divider, Form, Input, InputNumber, Radio, Select, Typography, theme } from "antd";
+import { Alert, Button, Checkbox, DatePicker, Divider, Form, Input, InputNumber, Modal, Radio, Select, Typography, theme } from "antd";
 import TextArea from "antd/es/input/TextArea";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ExtraFieldFormItem, ParsedExtras, StringifiedExtras } from "../../components/extraFields";
 import { useSpoolmanLocations } from "../../components/otherModels";
 import { searchMatches } from "../../utils/filtering";
@@ -16,6 +16,8 @@ import { EntityType, useGetFields } from "../../utils/queryFields";
 import { useSavedState } from "../../utils/saveload";
 import { getCurrencySymbol, useCurrency } from "../../utils/settings";
 import { createFilamentFromExternal } from "../filaments/functions";
+import { useGetPrintSettings } from "../printing/printing";
+import SpoolQRCodePrintingDialog from "../printing/spoolQrCodePrintingDialog";
 import { useGetFilamentSelectOptions } from "./functions";
 import { ISpool, ISpoolParsedExtras, WeightToEnter } from "./model";
 
@@ -122,26 +124,35 @@ export const SpoolCreate = (props: IResourceComponentsProps & CreateOrCloneProps
       values.filament_id = internalFilament.id;
     }
 
+    const newIds: number[] = [];
     if (quantity > 1) {
       const submit = Array(quantity).fill(values);
-      // queue multiple creates this way for now Refine doesn't seem to map Arrays to createMany or multiple creates like it says it does
       const results = await Promise.all(submit.map((r) => onFinish(r)));
-      if (addToPrintQueue) {
-        const newIds = results
-          .filter((r): r is { data: ISpool } => r != null && "data" in r)
-          .map((r) => r.data.id);
-        if (newIds.length > 0) {
-          setPrintQueue((prev) => [...prev, ...newIds]);
-        }
+      const ids = results
+        .filter((r): r is { data: ISpool } => r != null && "data" in r)
+        .map((r) => r.data.id);
+      newIds.push(...ids);
+      if (addToPrintQueue && ids.length > 0) {
+        setPrintQueue((prev) => [...prev, ...ids]);
       }
     } else {
       const result = await onFinish(values);
-      if (addToPrintQueue && result && "data" in result) {
-        setPrintQueue((prev) => [...prev, result.data.id]);
+      if (result && "data" in result) {
+        newIds.push(result.data.id);
+        if (addToPrintQueue) {
+          setPrintQueue((prev) => [...prev, result.data.id]);
+        }
       }
     }
 
-    redirect(redirectTo);
+    if (selectedPrintPresetId && newIds.length > 0) {
+      localStorage.setItem("selectedPreset", JSON.stringify(selectedPrintPresetId));
+      redirectAfterPrintRef.current = redirectTo;
+      setPrintModalSpoolIds(newIds);
+      setPrintModalOpen(true);
+    } else {
+      redirect(redirectTo);
+    }
   };
 
   // Use useEffect to update the form's initialValues when the extra fields are loaded
@@ -197,6 +208,11 @@ export const SpoolCreate = (props: IResourceComponentsProps & CreateOrCloneProps
   const [quantity, setQuantity] = useState(1);
   const [addToPrintQueue, setAddToPrintQueue] = useState(false);
   const [, setPrintQueue] = useSavedState<number[]>("printQueue", []);
+  const [selectedPrintPresetId, setSelectedPrintPresetId] = useState<string | undefined>(undefined);
+  const [printModalSpoolIds, setPrintModalSpoolIds] = useState<number[]>([]);
+  const [printModalOpen, setPrintModalOpen] = useState(false);
+  const redirectAfterPrintRef = useRef<"list" | "edit" | "create">("list");
+  const printPresets = useGetPrintSettings();
 
   const incrementQty = () => {
     setQuantity(quantity + 1);
@@ -288,6 +304,20 @@ export const SpoolCreate = (props: IResourceComponentsProps & CreateOrCloneProps
         <Checkbox checked={addToPrintQueue} onChange={(e) => setAddToPrintQueue(e.target.checked)}>
           {t("spool.form.add_to_print_queue")}
         </Checkbox>
+        <Select
+          allowClear
+          placeholder="Print labels preset"
+          style={{ width: 200 }}
+          value={selectedPrintPresetId}
+          onChange={(v) => {
+            setSelectedPrintPresetId(v);
+            if (v) setAddToPrintQueue(false);
+          }}
+          options={printPresets?.map((p) => ({
+            label: p.labelSettings.printSettings.name || "Unnamed preset",
+            value: p.labelSettings.printSettings.id,
+          }))}
+        />
         <div style={{ display: "flex", backgroundColor: "#141414", border: "1px solid #424242", borderRadius: "6px" }}>
           <Button type="text" style={{ padding: 0, width: 32, height: 32 }} onClick={decrementQty}>
             <MinusOutlined />
@@ -558,6 +588,36 @@ export const SpoolCreate = (props: IResourceComponentsProps & CreateOrCloneProps
         ))}
       </Form>
     </Create>
+    <Modal
+      open={printModalOpen}
+      onCancel={() => {
+        setPrintModalOpen(false);
+        redirect(redirectAfterPrintRef.current);
+      }}
+      width="95vw"
+      style={{ top: 20 }}
+      title="Print Labels"
+      footer={
+        <Button
+          type="primary"
+          onClick={() => {
+            setPrintModalOpen(false);
+            redirect(redirectAfterPrintRef.current);
+          }}
+        >
+          Done
+        </Button>
+      }
+      destroyOnHidden
+    >
+      <SpoolQRCodePrintingDialog
+        spoolIds={printModalSpoolIds}
+        onClose={() => {
+          setPrintModalOpen(false);
+          redirect(redirectAfterPrintRef.current);
+        }}
+      />
+    </Modal>
   </>
   );
 };
