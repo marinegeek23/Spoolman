@@ -61,7 +61,15 @@ export const Printing = () => {
               }}
             />
           )}
-          {step === 1 && <SpoolQRCodePrintingDialog spoolIds={spoolIds} />}
+          {step === 1 && (
+            <SpoolQRCodePrintingDialog
+              spoolIds={spoolIds}
+              onClose={() => {
+                const returnUrl = searchParams.get("return");
+                navigate(returnUrl ?? "/spool");
+              }}
+            />
+          )}
         </Content>
       </PageHeader>
     </>

@@ -1,4 +1,4 @@
-import { CopyOutlined, DeleteOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons";
+import { ClearOutlined, CloseOutlined, CopyOutlined, DeleteOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons";
 import { useTranslate } from "@refinedev/core";
 import { Button, Flex, Form, Input, Modal, Popconfirm, Select, Table, Typography, message } from "antd";
 import TextArea from "antd/es/input/TextArea";
@@ -21,9 +21,10 @@ const { Text } = Typography;
 
 interface SpoolQRCodePrintingDialog {
   spoolIds: number[];
+  onClose?: () => void;
 }
 
-const SpoolQRCodePrintingDialog = ({ spoolIds }: SpoolQRCodePrintingDialog) => {
+const SpoolQRCodePrintingDialog = ({ spoolIds, onClose }: SpoolQRCodePrintingDialog) => {
   const t = useTranslate();
   const baseUrlSetting = useGetSetting("base_url");
   const baseUrlRoot =
@@ -32,6 +33,7 @@ const SpoolQRCodePrintingDialog = ({ spoolIds }: SpoolQRCodePrintingDialog) => {
       : window.location.origin;
   const [messageApi, contextHolder] = message.useMessage();
   const [useHTTPUrl, setUseHTTPUrl] = useSavedState("print-useHTTPUrl", false);
+  const [, setPrintQueue] = useSavedState<number[]>("printQueue", []);
 
   const itemQueries = useGetSpoolsByIds(spoolIds);
   const items = itemQueries
@@ -357,6 +359,25 @@ Spool Weight: {filament.spool_weight} g
             >
               {t("printing.generic.saveSetting")}
             </Button>
+            <Button
+              size="large"
+              icon={<ClearOutlined />}
+              onClick={() => {
+                setPrintQueue([]);
+                onClose?.();
+              }}
+            >
+              Clear Queue
+            </Button>
+            {onClose && (
+              <Button
+                size="large"
+                icon={<CloseOutlined />}
+                onClick={onClose}
+              >
+                Close
+              </Button>
+            )}
           </>
         }
       />

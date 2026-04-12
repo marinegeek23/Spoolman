@@ -622,7 +622,13 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
           }
           destroyOnClose
         >
-          <SpoolQRCodePrintingDialog spoolIds={printModalSpoolIds} />
+          <SpoolQRCodePrintingDialog
+            spoolIds={printModalSpoolIds}
+            onClose={() => {
+              setPrintModalOpen(false);
+              redirect(redirectAfterPrintRef.current);
+            }}
+          />
         </Modal>
         <Divider />
         <Form.Item
