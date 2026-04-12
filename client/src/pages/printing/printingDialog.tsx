@@ -815,9 +815,6 @@ const PrintingDialog = ({
         <Col>
           <Space>
             {extraButtons}
-            <Button type="primary" icon={<FileImageOutlined />} size="large" onClick={saveAsImage}>
-              {t("printing.generic.saveAsImage")}
-            </Button>
             <Button type="primary" icon={<PrinterOutlined />} size="large" onClick={() => reactToPrintFn()}>
               {t("printing.generic.print")}
             </Button>
