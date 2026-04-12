@@ -362,7 +362,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
           name={["vendor_id"]}
           rules={[
             {
-              required: false,
+              required: true,
             },
           ]}
         >
@@ -384,7 +384,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
           help={t("filament.fields_help.material")}
         >
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <Form.Item name={["filament_type_id"]} rules={[{ required: false }]} noStyle>
+            <Form.Item name={["filament_type_id"]} rules={[{ required: true }]} noStyle>
               <Select
                 {...filamentTypeSelect}
                 allowClear
