@@ -1,13 +1,15 @@
 import { Create, useForm, useSelect, useThemedLayoutContext } from "@refinedev/antd";
 import { HttpError, IResourceComponentsProps, useInvalidate, useTranslate } from "@refinedev/core";
 import { PlusOutlined } from "@ant-design/icons";
-import { Button, Checkbox, Col, ColorPicker, Divider, Form, Input, InputNumber, Modal, Radio, Row, Select, Typography, theme } from "antd";
+import { Button, Checkbox, Col, ColorPicker, Divider, Form, Input, InputNumber, Modal, Radio, Row, Select, Space, Typography, theme } from "antd";
 import TextArea from "antd/es/input/TextArea";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import { useEffect, useRef, useState } from "react";
 import { useSavedState } from "../../utils/saveload";
 import { getAPIURL } from "../../utils/url";
+import { useGetPrintSettings } from "../printing/printing";
+import SpoolQRCodePrintingDialog from "../printing/spoolQrCodePrintingDialog";
 import { ExtraFieldFormItem, ParsedExtras, StringifiedExtras } from "../../components/extraFields";
 import { FilamentImportModal } from "../../components/filamentImportModal";
 import { MultiColorPicker } from "../../components/multiColorPicker";
@@ -200,6 +202,11 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
   const [spoolQuantity, setSpoolQuantity] = useState(1);
   const [addToPrintQueue, setAddToPrintQueue] = useState(true);
   const [, setPrintQueue] = useSavedState<number[]>("printQueue", []);
+  const [selectedPrintPresetId, setSelectedPrintPresetId] = useState<string | undefined>(undefined);
+  const [printModalSpoolIds, setPrintModalSpoolIds] = useState<number[]>([]);
+  const [printModalOpen, setPrintModalOpen] = useState(false);
+  const redirectAfterPrintRef = useRef<"list" | "create">("list");
+  const printPresets = useGetPrintSettings();
 
   const [quickTypeOpen, setQuickTypeOpen] = useState(false);
   const [quickTypeName, setQuickTypeName] = useState("");
@@ -233,8 +240,8 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
     const result = await onFinish(values);
     const filamentId = (result as { data?: { id?: number } })?.data?.id;
 
+    const spoolIds: number[] = [];
     if (filamentId && spoolQuantity > 0) {
-      const spoolIds: number[] = [];
       for (let i = 0; i < spoolQuantity; i++) {
         const res = await fetch(getAPIURL() + "/spool", {
           method: "POST",
@@ -251,7 +258,14 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
       }
     }
 
-    redirect(redirectTo);
+    if (selectedPrintPresetId && spoolIds.length > 0) {
+      localStorage.setItem("selectedPreset", JSON.stringify(selectedPrintPresetId));
+      redirectAfterPrintRef.current = redirectTo;
+      setPrintModalSpoolIds(spoolIds);
+      setPrintModalOpen(true);
+    } else {
+      redirect(redirectTo);
+    }
   };
 
   const importFilament = async (filament: ExternalFilament) => {
@@ -562,12 +576,51 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
           />
         </Form.Item>
         {spoolQuantity > 0 && (
-          <Form.Item style={{ marginBottom: 0 }}>
+          <Form.Item style={{ marginBottom: 8 }}>
             <Checkbox checked={addToPrintQueue} onChange={(e) => setAddToPrintQueue(e.target.checked)}>
               Add to print queue
             </Checkbox>
           </Form.Item>
         )}
+        {spoolQuantity > 0 && (
+          <Form.Item label="Print labels" style={{ marginBottom: 0 }}>
+            <Select
+              allowClear
+              placeholder="Select a print preset (optional)"
+              style={{ width: "50%" }}
+              value={selectedPrintPresetId}
+              onChange={(v) => setSelectedPrintPresetId(v)}
+              options={printPresets?.map((p) => ({
+                label: p.labelSettings.printSettings.name || "Unnamed preset",
+                value: p.labelSettings.printSettings.id,
+              }))}
+            />
+          </Form.Item>
+        )}
+        <Modal
+          open={printModalOpen}
+          onCancel={() => {
+            setPrintModalOpen(false);
+            redirect(redirectAfterPrintRef.current);
+          }}
+          width="95vw"
+          style={{ top: 20 }}
+          title="Print Labels"
+          footer={
+            <Button
+              type="primary"
+              onClick={() => {
+                setPrintModalOpen(false);
+                redirect(redirectAfterPrintRef.current);
+              }}
+            >
+              Done
+            </Button>
+          }
+          destroyOnClose
+        >
+          <SpoolQRCodePrintingDialog spoolIds={printModalSpoolIds} />
+        </Modal>
         <Divider />
         <Form.Item
           label={t("filament.fields.comment")}
