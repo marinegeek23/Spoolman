@@ -22,6 +22,7 @@ export interface QRCodePrintSettings {
   showContent?: boolean;
   showQRCodeMode?: "no" | "simple" | "withIcon";
   textSize?: number;
+  qrCodeSize?: number;
   printSettings: PrintSettings;
 }
 

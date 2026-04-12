@@ -41,6 +41,7 @@ const QRCodePrintingDialog = ({
   const showContent = printSettings?.showContent === undefined ? true : printSettings?.showContent;
   const showQRCodeMode = printSettings?.showQRCodeMode || "withIcon";
   const textSize = printSettings?.textSize || 3;
+  const qrCodeSize = printSettings?.qrCodeSize;
 
   const elements = items.map((item, idx) => {
     return (
@@ -155,6 +156,40 @@ const QRCodePrintingDialog = ({
               </Col>
             </Row>
           </Form.Item>
+          <Form.Item label="QR code size" tooltip="Fixed size in mm. Leave blank to auto-size.">
+            <Row>
+              <Col span={12}>
+                <Slider
+                  disabled={showQRCodeMode === "no"}
+                  tooltip={{ formatter: (value) => `${value} mm` }}
+                  min={5}
+                  max={50}
+                  value={qrCodeSize ?? 21}
+                  step={1}
+                  onChange={(value) => {
+                    printSettings.qrCodeSize = value;
+                    setPrintSettings(printSettings);
+                  }}
+                />
+              </Col>
+              <Col span={12}>
+                <InputNumber
+                  disabled={showQRCodeMode === "no"}
+                  min={5}
+                  max={50}
+                  step={1}
+                  style={{ margin: "0 16px" }}
+                  value={qrCodeSize}
+                  placeholder="auto"
+                  addonAfter="mm"
+                  onChange={(value) => {
+                    printSettings.qrCodeSize = value ?? undefined;
+                    setPrintSettings(printSettings);
+                  }}
+                />
+              </Col>
+            </Row>
+          </Form.Item>
 
           {extraSettings}
         </>
@@ -168,13 +203,12 @@ const QRCodePrintingDialog = ({
             }
 
             .print-page .print-qrcode-container {
-              max-width: ${showContent ? "50%" : "100%"};
+              ${qrCodeSize ? `width: ${qrCodeSize}mm; height: ${qrCodeSize}mm; flex-shrink: 0;` : `max-width: ${showContent ? "50%" : "100%"};`}
               display: flex;
             }
 
             .print-page .print-qrcode {
-              width: auto !important;
-              height: auto !important;
+              ${qrCodeSize ? `width: ${qrCodeSize}mm !important; height: ${qrCodeSize}mm !important;` : "width: auto !important; height: auto !important;"}
               padding: 2mm;
             }
 
