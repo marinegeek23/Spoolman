@@ -118,7 +118,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
     HttpError,
     IFilamentRequest,
     IFilamentParsedExtras
-  >();
+  >({ redirect: false });
 
   if (!formProps.initialValues) {
     formProps.initialValues = {};
@@ -589,7 +589,10 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
               placeholder="Select a print preset (optional)"
               style={{ width: "50%" }}
               value={selectedPrintPresetId}
-              onChange={(v) => setSelectedPrintPresetId(v)}
+              onChange={(v) => {
+                setSelectedPrintPresetId(v);
+                if (v) setAddToPrintQueue(false);
+              }}
               options={printPresets?.map((p) => ({
                 label: p.labelSettings.printSettings.name || "Unnamed preset",
                 value: p.labelSettings.printSettings.id,
