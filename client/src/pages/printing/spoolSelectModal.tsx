@@ -1,6 +1,6 @@
 import { RightOutlined } from "@ant-design/icons";
 import { useTable } from "@refinedev/antd";
-import { Button, Checkbox, Col, message, Row, Space, Table } from "antd";
+import { Button, Checkbox, Col, Input, message, Row, Space, Table } from "antd";
 import { t } from "i18next";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
@@ -39,6 +39,7 @@ function collapseSpool(element: ISpool): ISpoolCollapsed {
 const SpoolSelectModal = ({ description, onContinue }: Props) => {
   const [selectedItems, setSelectedItems] = useState<number[]>([]);
   const [showArchived, setShowArchived] = useState(false);
+  const [filamentSearch, setFilamentSearch] = useState("");
   const [messageApi, contextHolder] = message.useMessage();
   const navigate = useNavigate();
 
@@ -79,10 +80,15 @@ const SpoolSelectModal = ({ description, onContinue }: Props) => {
   };
 
   // Collapse the dataSource to a mutable list and add a filament_name field
-  const dataSource: ISpoolCollapsed[] = useMemo(
+  const allDataSource: ISpoolCollapsed[] = useMemo(
     () => (tableProps.dataSource || []).map((record) => ({ ...record })),
     [tableProps.dataSource],
   );
+  const dataSource = filamentSearch.trim()
+    ? allDataSource.filter((s) =>
+        s["filament.combined_name"].toLowerCase().includes(filamentSearch.toLowerCase()),
+      )
+    : allDataSource;
 
   // Function to add/remove all filtered items from selected items
   const selectUnselectFiltered = (select: boolean) => {
@@ -120,6 +126,13 @@ const SpoolSelectModal = ({ description, onContinue }: Props) => {
       {contextHolder}
       <Space direction="vertical" style={{ width: "100%" }}>
         {description && <div>{description}</div>}
+        <Input.Search
+          placeholder="Search filament..."
+          allowClear
+          value={filamentSearch}
+          onChange={(e) => setFilamentSearch(e.target.value)}
+          style={{ width: 300 }}
+        />
         <Table
           {...tableProps}
           rowKey="id"
