@@ -1,7 +1,7 @@
 import { EditOutlined, EyeOutlined, FileOutlined, FilterOutlined, PlusSquareOutlined } from "@ant-design/icons";
 import { List, useTable } from "@refinedev/antd";
 import { useInvalidate, useNavigation, useTranslate } from "@refinedev/core";
-import { Button, Dropdown, Table } from "antd";
+import { Button, Dropdown, Input, Select, Table } from "antd";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import { useMemo, useState } from "react";
@@ -81,6 +81,13 @@ export const FilamentList = () => {
 
   const allColumnsWithExtraFields = [...allColumns, ...(extraFields.data?.map((field) => "extra." + field.key) ?? [])];
 
+  // Header filter state
+  const [vendorFilter, setVendorFilter] = useState<string | undefined>(undefined);
+  const [nameSearch, setNameSearch] = useState("");
+  const [materialFilter, setMaterialFilter] = useState<string | undefined>(undefined);
+  const vendorOptions = useSpoolmanVendors(true);
+  const materialOptions = useSpoolmanMaterials(true);
+
   // Load initial state
   const initialState = useInitialTableState(namespace);
 
@@ -141,7 +148,13 @@ export const FilamentList = () => {
     () => (tableProps.dataSource || []).map((record) => ({ ...record })),
     [tableProps.dataSource],
   );
-  const dataSource = useLiveify("filament", queryDataSource, collapseFilament);
+  const liveDataSource = useLiveify("filament", queryDataSource, collapseFilament);
+  const dataSource = liveDataSource.filter((r) => {
+    if (vendorFilter && r["vendor.name"] !== vendorFilter) return false;
+    if (nameSearch.trim() && !(r.name ?? "").toLowerCase().includes(nameSearch.toLowerCase())) return false;
+    if (materialFilter && r.material !== materialFilter) return false;
+    return true;
+  });
 
   if (tableProps.pagination) {
     tableProps.pagination.showSizeChanger = true;
@@ -169,6 +182,37 @@ export const FilamentList = () => {
     <List
       headerButtons={({ defaultButtons }) => (
         <>
+          <Select
+            allowClear
+            placeholder="Manufacturer"
+            style={{ width: 180 }}
+            value={vendorFilter}
+            onChange={(v) => setVendorFilter(v)}
+            options={vendorOptions.data?.map((v) => ({ label: v, value: v }))}
+            showSearch
+            filterOption={(input, option) =>
+              typeof option?.label === "string" && option.label.toLowerCase().includes(input.toLowerCase())
+            }
+          />
+          <Input.Search
+            placeholder="Search name..."
+            allowClear
+            value={nameSearch}
+            onChange={(e) => setNameSearch(e.target.value)}
+            style={{ width: 220 }}
+          />
+          <Select
+            allowClear
+            placeholder="Material"
+            style={{ width: 140 }}
+            value={materialFilter}
+            onChange={(v) => setMaterialFilter(v)}
+            options={materialOptions.data?.map((m) => ({ label: m, value: m }))}
+            showSearch
+            filterOption={(input, option) =>
+              typeof option?.label === "string" && option.label.toLowerCase().includes(input.toLowerCase())
+            }
+          />
           <Button
             type="primary"
             icon={<FilterOutlined />}
