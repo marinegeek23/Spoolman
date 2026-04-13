@@ -11,7 +11,7 @@ import {
 } from "@ant-design/icons";
 import { List, useTable } from "@refinedev/antd";
 import { useInvalidate, useNavigation, useTranslate } from "@refinedev/core";
-import { Button, Dropdown, Modal, Table } from "antd";
+import { Button, Dropdown, Input, Modal, Table } from "antd";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import { useCallback, useMemo, useState } from "react";
@@ -114,6 +114,9 @@ export const SpoolList = () => {
   // State for the switch to show archived spools
   const [showArchived, setShowArchived] = useSavedState("spoolList-showArchived", false);
 
+  // Client-side filament search
+  const [filamentSearch, setFilamentSearch] = useState("");
+
   // Print queue
   const [printQueue, setPrintQueue] = useSavedState<number[]>("printQueue", []);
 
@@ -179,7 +182,12 @@ export const SpoolList = () => {
     () => (tableProps.dataSource || []).map((record) => ({ ...record })),
     [tableProps.dataSource],
   );
-  const dataSource = useLiveify("spool", queryDataSource, collapseSpool);
+  const liveDataSource = useLiveify("spool", queryDataSource, collapseSpool);
+  const dataSource = filamentSearch.trim()
+    ? liveDataSource.filter((s) =>
+        s["filament.combined_name"].toLowerCase().includes(filamentSearch.toLowerCase()),
+      )
+    : liveDataSource;
 
   // Function for opening an ant design modal that asks for confirmation for archiving a spool
   const archiveSpool = async (spool: ISpoolCollapsed, archive: boolean) => {
@@ -269,6 +277,13 @@ export const SpoolList = () => {
     <List
       headerButtons={({ defaultButtons }) => (
         <>
+          <Input.Search
+            placeholder="Search filament..."
+            allowClear
+            value={filamentSearch}
+            onChange={(e) => setFilamentSearch(e.target.value)}
+            style={{ width: 260 }}
+          />
           <Button
             type="primary"
             icon={<PrinterOutlined />}
