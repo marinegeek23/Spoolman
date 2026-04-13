@@ -167,6 +167,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
     resource: "filament_type",
     optionLabel: "name",
     pagination: { mode: "off" },
+    sorters: [{ field: "id", order: "desc" }],
   });
 
   const watchedFilamentTypeId = Form.useWatch("filament_type_id", form);
