@@ -1,10 +1,10 @@
 import { EditOutlined, EyeOutlined, FileOutlined, FilterOutlined, PlusSquareOutlined } from "@ant-design/icons";
 import { List, useTable } from "@refinedev/antd";
 import { useInvalidate, useNavigation, useTranslate } from "@refinedev/core";
-import { Button, Dropdown, Input, Select, Table } from "antd";
+import { Button, Dropdown, Input, InputNumber, Select, Table } from "antd";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   ActionsColumn,
@@ -24,6 +24,7 @@ import {
   useSpoolmanVendors,
 } from "../../components/otherModels";
 import { removeUndefined } from "../../utils/filtering";
+import { getAPIURL } from "../../utils/url";
 import { EntityType, useGetFields } from "../../utils/queryFields";
 import { TableState, useInitialTableState, useStoreInitialState } from "../../utils/saveload";
 import { useCurrencyFormatter } from "../../utils/settings";
@@ -69,7 +70,7 @@ const allColumns: (keyof IFilamentCollapsed & string)[] = [
   "comment",
 ];
 const defaultColumns = allColumns.filter(
-  (column_id) => ["registered", "density", "diameter", "spool_weight"].indexOf(column_id) === -1,
+  (column_id) => ["registered", "density", "diameter", "article_number"].indexOf(column_id) === -1,
 );
 
 export const FilamentList = () => {
@@ -87,6 +88,7 @@ export const FilamentList = () => {
   const [materialFilter, setMaterialFilter] = useState<string | undefined>(undefined);
   const vendorOptions = useSpoolmanVendors(true);
   const materialOptions = useSpoolmanMaterials(true);
+  const materialFilterQuery = useSpoolmanMaterials();
 
   // Sync header filters to server-side filters (debounced for name search)
   useEffect(() => {
@@ -186,6 +188,123 @@ export const FilamentList = () => {
     tableState,
     sorter: true,
   };
+
+  // Inline editing state
+  const [editingCell, setEditingCell] = useState<{ id: number; field: string } | null>(null);
+  const [editingValue, setEditingValue] = useState<string | number | null | undefined>(undefined);
+  const startEdit = (id: number, field: string, value: string | number | null | undefined) => {
+    setEditingCell({ id, field });
+    setEditingValue(value ?? undefined);
+  };
+  const cancelEdit = () => setEditingCell(null);
+  const saveEdit = async (id: number, field: string, value: string | number | null | undefined) => {
+    await fetch(getAPIURL() + `/filament/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [field]: value === undefined ? null : value }),
+    });
+    invalidate({ resource: "filament", invalidates: ["list"] });
+    setEditingCell(null);
+  };
+
+  // Editable material column
+  const materialColBase = FilteredQueryColumn({
+    ...commonProps,
+    id: "material",
+    i18ncat: "filament",
+    filterValueQuery: materialFilterQuery,
+    width: 110,
+  });
+  const editableMaterialCol = materialColBase
+    ? {
+        ...materialColBase,
+        onCell: (record: IFilamentCollapsed) => ({
+          onDoubleClick: () => startEdit(record.id, "material", record.material),
+          style: { cursor: "pointer" },
+        }),
+        render: (value: unknown, record: IFilamentCollapsed, index: number): React.ReactNode => {
+          if (editingCell?.id === record.id && editingCell.field === "material") {
+            return (
+              <Select
+                autoFocus
+                size="small"
+                style={{ minWidth: 120 }}
+                value={editingValue as string | undefined}
+                onChange={(v) => saveEdit(record.id, "material", v as string)}
+                options={materialOptions.data?.map((m) => ({ label: m, value: m }))}
+                showSearch
+                filterOption={(input, option) =>
+                  typeof option?.label === "string" && option.label.toLowerCase().includes(input.toLowerCase())
+                }
+              />
+            );
+          }
+          return (materialColBase.render ? materialColBase.render(value, record, index) : value) as React.ReactNode;
+        },
+      }
+    : undefined;
+
+  // Editable weight column
+  const weightColBase = NumberColumn({ ...commonProps, id: "weight", i18ncat: "filament", unit: "g", maxDecimals: 0, width: 100 });
+  const editableWeightCol = weightColBase
+    ? {
+        ...weightColBase,
+        onCell: (record: IFilamentCollapsed) => ({
+          onDoubleClick: () => startEdit(record.id, "weight", record.weight),
+          style: { cursor: "pointer" },
+        }),
+        render: (value: unknown, record: IFilamentCollapsed, index: number): React.ReactNode => {
+          if (editingCell?.id === record.id && editingCell.field === "weight") {
+            return (
+              <InputNumber
+                autoFocus
+                size="small"
+                style={{ width: 100 }}
+                value={editingValue as number | undefined}
+                onChange={(v) => setEditingValue(v ?? undefined)}
+                onBlur={() => saveEdit(record.id, "weight", editingValue)}
+                onPressEnter={() => saveEdit(record.id, "weight", editingValue)}
+                onKeyDown={(e) => { if (e.key === "Escape") cancelEdit(); }}
+                precision={0}
+                addonAfter="g"
+              />
+            );
+          }
+          return (weightColBase.render ? weightColBase.render(value, record, index) : value) as React.ReactNode;
+        },
+      }
+    : undefined;
+
+  // Editable spool_weight column
+  const spoolWeightColBase = NumberColumn({ ...commonProps, id: "spool_weight", i18ncat: "filament", unit: "g", maxDecimals: 0, width: 100 });
+  const editableSpoolWeightCol = spoolWeightColBase
+    ? {
+        ...spoolWeightColBase,
+        onCell: (record: IFilamentCollapsed) => ({
+          onDoubleClick: () => startEdit(record.id, "spool_weight", record.spool_weight),
+          style: { cursor: "pointer" },
+        }),
+        render: (value: unknown, record: IFilamentCollapsed, index: number): React.ReactNode => {
+          if (editingCell?.id === record.id && editingCell.field === "spool_weight") {
+            return (
+              <InputNumber
+                autoFocus
+                size="small"
+                style={{ width: 100 }}
+                value={editingValue as number | undefined}
+                onChange={(v) => setEditingValue(v ?? undefined)}
+                onBlur={() => saveEdit(record.id, "spool_weight", editingValue)}
+                onPressEnter={() => saveEdit(record.id, "spool_weight", editingValue)}
+                onKeyDown={(e) => { if (e.key === "Escape") cancelEdit(); }}
+                precision={0}
+                addonAfter="g"
+              />
+            );
+          }
+          return (spoolWeightColBase.render ? spoolWeightColBase.render(value, record, index) : value) as React.ReactNode;
+        },
+      }
+    : undefined;
 
   return (
     <List
@@ -302,13 +421,7 @@ export const FilamentList = () => {
                 : record.color_hex,
             filterValueQuery: useSpoolmanFilamentNames(),
           }),
-          FilteredQueryColumn({
-            ...commonProps,
-            id: "material",
-            i18ncat: "filament",
-            filterValueQuery: useSpoolmanMaterials(),
-            width: 110,
-          }),
+          editableMaterialCol,
           SortedColumn({
             ...commonProps,
             id: "price",
@@ -338,22 +451,8 @@ export const FilamentList = () => {
             maxDecimals: 2,
             width: 100,
           }),
-          NumberColumn({
-            ...commonProps,
-            id: "weight",
-            i18ncat: "filament",
-            unit: "g",
-            maxDecimals: 0,
-            width: 100,
-          }),
-          NumberColumn({
-            ...commonProps,
-            id: "spool_weight",
-            i18ncat: "filament",
-            unit: "g",
-            maxDecimals: 0,
-            width: 100,
-          }),
+          editableWeightCol,
+          editableSpoolWeightCol,
           FilteredQueryColumn({
             ...commonProps,
             id: "article_number",

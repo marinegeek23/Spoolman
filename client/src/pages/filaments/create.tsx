@@ -5,7 +5,7 @@ import { Button, Checkbox, Col, ColorPicker, Divider, Form, Input, InputNumber, 
 import TextArea from "antd/es/input/TextArea";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSavedState } from "../../utils/saveload";
 import { getAPIURL } from "../../utils/url";
 import { useGetPrintSettings } from "../printing/printing";
@@ -209,6 +209,22 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
   const redirectAfterPrintRef = useRef<"list" | "create">("list");
   const printPresets = useGetPrintSettings();
 
+  const [ftSortOrder, setFtSortOrder] = useState<"lastAdded" | "alphAsc" | "alphDesc">("lastAdded");
+
+  const sortedFilamentTypeOptions = useMemo(() => {
+    const opts = filamentTypeSelect.options ?? [];
+    if (ftSortOrder === "alphAsc") {
+      return [...opts].sort((a, b) =>
+        (a.label as string).localeCompare(b.label as string, undefined, { sensitivity: "base" }),
+      );
+    } else if (ftSortOrder === "alphDesc") {
+      return [...opts].sort((a, b) =>
+        (b.label as string).localeCompare(a.label as string, undefined, { sensitivity: "base" }),
+      );
+    }
+    return opts; // lastAdded: keep server order (id desc)
+  }, [filamentTypeSelect.options, ftSortOrder]);
+
   const [quickTypeOpen, setQuickTypeOpen] = useState(false);
   const [quickTypeName, setQuickTypeName] = useState("");
   const [quickTypeLoading, setQuickTypeLoading] = useState(false);
@@ -384,13 +400,14 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
           label={t("filament.fields.material")}
           help={t("filament.fields_help.material")}
         >
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <Form.Item name={["filament_type_id"]} rules={[{ required: true }]} noStyle>
               <Select
                 {...filamentTypeSelect}
+                options={sortedFilamentTypeOptions}
                 allowClear
                 placeholder="Select a material type"
-                style={{ width: "50%" }}
+                style={{ width: 220 }}
                 filterOption={(input, option) =>
                   typeof option?.label === "string" && option.label.toLowerCase().includes(input.toLowerCase())
                 }
@@ -403,6 +420,17 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
             >
               New Type
             </Button>
+            <Radio.Group
+              size="small"
+              value={ftSortOrder}
+              onChange={(e) => setFtSortOrder(e.target.value)}
+              optionType="button"
+              options={[
+                { label: "Last Added", value: "lastAdded" },
+                { label: "A→Z", value: "alphAsc" },
+                { label: "Z→A", value: "alphDesc" },
+              ]}
+            />
           </div>
         </Form.Item>
         <Form.Item name={["material"]} hidden>
