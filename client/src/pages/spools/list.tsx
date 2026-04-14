@@ -14,7 +14,8 @@ import { useInvalidate, useNavigation, useTranslate } from "@refinedev/core";
 import { Button, Dropdown, Input, Modal, Table } from "antd";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
-import { useCallback, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   Action,
@@ -38,6 +39,8 @@ import { removeUndefined } from "../../utils/filtering";
 import { EntityType, useGetFields } from "../../utils/queryFields";
 import { TableState, useInitialTableState, useSavedState, useStoreInitialState } from "../../utils/saveload";
 import { useCurrencyFormatter } from "../../utils/settings";
+import { getAPIURL } from "../../utils/url";
+import { IFilament } from "../filaments/model";
 import { setSpoolArchived, useSpoolAdjustModal } from "./functions";
 import { ISpool } from "./model";
 
@@ -114,8 +117,48 @@ export const SpoolList = () => {
   // State for the switch to show archived spools
   const [showArchived, setShowArchived] = useSavedState("spoolList-showArchived", false);
 
-  // Client-side filament search
+  // Server-side filament search
   const [filamentSearch, setFilamentSearch] = useState("");
+  const allFilaments = useQuery<IFilament[]>({
+    queryKey: ["filaments"],
+    queryFn: async () => {
+      const res = await fetch(getAPIURL() + "/filament");
+      return res.json();
+    },
+  });
+  const searchFilterActive = useRef(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const search = filamentSearch.trim();
+      const otherFilters = filters.filter((f) => "field" in f && f.field !== "filament.id");
+
+      if (!search) {
+        if (searchFilterActive.current) {
+          setFilters(otherFilters, "replace");
+          searchFilterActive.current = false;
+        }
+        return;
+      }
+
+      const matchingIds = (allFilaments.data ?? [])
+        .filter((f) => {
+          const name = f.vendor && "name" in f.vendor
+            ? `${f.vendor.name} - ${f.name ?? ""}`
+            : (f.name ?? "");
+          return name.toLowerCase().includes(search.toLowerCase());
+        })
+        .map((f) => f.id);
+
+      setFilters(
+        [...otherFilters, { field: "filament.id", operator: "in", value: matchingIds.length > 0 ? matchingIds : [-1] }],
+        "replace",
+      );
+      searchFilterActive.current = true;
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [filamentSearch, allFilaments.data]);
 
   // Print queue
   const [printQueue, setPrintQueue] = useSavedState<number[]>("printQueue", []);
@@ -182,12 +225,7 @@ export const SpoolList = () => {
     () => (tableProps.dataSource || []).map((record) => ({ ...record })),
     [tableProps.dataSource],
   );
-  const liveDataSource = useLiveify("spool", queryDataSource, collapseSpool);
-  const dataSource = filamentSearch.trim()
-    ? liveDataSource.filter((s) =>
-        s["filament.combined_name"].toLowerCase().includes(filamentSearch.toLowerCase()),
-      )
-    : liveDataSource;
+  const dataSource = useLiveify("spool", queryDataSource, collapseSpool);
 
   // Function for opening an ant design modal that asks for confirmation for archiving a spool
   const archiveSpool = async (spool: ISpoolCollapsed, archive: boolean) => {
