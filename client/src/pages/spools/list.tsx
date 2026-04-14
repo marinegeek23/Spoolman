@@ -14,8 +14,7 @@ import { useInvalidate, useNavigation, useTranslate } from "@refinedev/core";
 import { Button, Dropdown, Input, Modal, Table } from "antd";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
-import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   Action,
@@ -39,8 +38,6 @@ import { removeUndefined } from "../../utils/filtering";
 import { EntityType, useGetFields } from "../../utils/queryFields";
 import { TableState, useInitialTableState, useSavedState, useStoreInitialState } from "../../utils/saveload";
 import { useCurrencyFormatter } from "../../utils/settings";
-import { getAPIURL } from "../../utils/url";
-import { IFilament } from "../filaments/model";
 import { setSpoolArchived, useSpoolAdjustModal } from "./functions";
 import { ISpool } from "./model";
 
@@ -52,12 +49,17 @@ interface ISpoolCollapsed extends ISpool {
   "filament.combined_name": string; // Eg. "Prusa - PLA Red"
   "filament.id": number;
   "filament.material"?: string;
+  "filament.vendor.name"?: string;
 }
 
 function collapseSpool(element: ISpool): ISpoolCollapsed {
   let filament_name: string;
-  if (element.filament.vendor && "name" in element.filament.vendor) {
-    filament_name = `${element.filament.vendor.name} - ${element.filament.name}`;
+  const vendor_name =
+    element.filament.vendor && "name" in element.filament.vendor
+      ? (element.filament.vendor.name as string)
+      : undefined;
+  if (vendor_name) {
+    filament_name = `${vendor_name} - ${element.filament.name}`;
   } else {
     filament_name = element.filament.name ?? element.filament.id.toString();
   }
@@ -69,11 +71,13 @@ function collapseSpool(element: ISpool): ISpoolCollapsed {
     "filament.combined_name": filament_name,
     "filament.id": element.filament.id,
     "filament.material": element.filament.material,
+    "filament.vendor.name": vendor_name,
   };
 }
 
 function translateColumnI18nKey(columnName: string): string {
-  columnName = columnName.replace(".", "_");
+  if (columnName === "filament.vendor.name") return "filament.fields.vendor_name";
+  columnName = columnName.replace(/\./g, "_");
   if (columnName === "filament_combined_name") columnName = "filament_name";
   else if (columnName === "filament_material") columnName = "material";
   return `spool.fields.${columnName}`;
@@ -83,6 +87,7 @@ const namespace = "spoolList-v2";
 
 const allColumns: (keyof ISpoolCollapsed & string)[] = [
   "id",
+  "filament.vendor.name",
   "filament.combined_name",
   "filament.material",
   "price",
@@ -98,7 +103,8 @@ const allColumns: (keyof ISpoolCollapsed & string)[] = [
   "comment",
 ];
 const defaultColumns = allColumns.filter(
-  (column_id) => ["registered", "used_length", "remaining_length", "lot_nr"].indexOf(column_id) === -1,
+  (column_id) =>
+    ["registered", "used_length", "remaining_length", "lot_nr"].indexOf(column_id) === -1,
 );
 
 export const SpoolList = () => {
@@ -117,48 +123,22 @@ export const SpoolList = () => {
   // State for the switch to show archived spools
   const [showArchived, setShowArchived] = useSavedState("spoolList-showArchived", false);
 
-  // Server-side filament search
-  const [filamentSearch, setFilamentSearch] = useState("");
-  const allFilaments = useQuery<IFilament[]>({
-    queryKey: ["filaments"],
-    queryFn: async () => {
-      const res = await fetch(getAPIURL() + "/filament");
-      return res.json();
-    },
-  });
-  const searchFilterActive = useRef(false);
+  // Server-side brand + name search
+  const [brandSearch, setBrandSearch] = useState("");
+  const [nameSearch, setNameSearch] = useState("");
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      const search = filamentSearch.trim();
-      const otherFilters = filters.filter((f) => "field" in f && f.field !== "filament.id");
-
-      if (!search) {
-        if (searchFilterActive.current) {
-          setFilters(otherFilters, "replace");
-          searchFilterActive.current = false;
-        }
-        return;
-      }
-
-      const matchingIds = (allFilaments.data ?? [])
-        .filter((f) => {
-          const name = f.vendor && "name" in f.vendor
-            ? `${f.vendor.name} - ${f.name ?? ""}`
-            : (f.name ?? "");
-          return name.toLowerCase().includes(search.toLowerCase());
-        })
-        .map((f) => f.id);
-
-      setFilters(
-        [...otherFilters, { field: "filament.id", operator: "in", value: matchingIds.length > 0 ? matchingIds : [-1] }],
-        "replace",
+      const otherFilters = filters.filter(
+        (f) => "field" in f && !["filament.vendor.name", "filament.name"].includes(f.field),
       );
-      searchFilterActive.current = true;
+      const newFilters = [...otherFilters];
+      if (brandSearch.trim()) newFilters.push({ field: "filament.vendor.name", operator: "eq", value: brandSearch.trim() });
+      if (nameSearch.trim()) newFilters.push({ field: "filament.name", operator: "eq", value: nameSearch.trim() });
+      setFilters(newFilters, "replace");
     }, 300);
-
     return () => clearTimeout(timer);
-  }, [filamentSearch, allFilaments.data]);
+  }, [brandSearch, nameSearch]);
 
   // Print queue
   const [printQueue, setPrintQueue] = useSavedState<number[]>("printQueue", []);
@@ -316,11 +296,18 @@ export const SpoolList = () => {
       headerButtons={({ defaultButtons }) => (
         <>
           <Input.Search
-            placeholder="Search filament..."
+            placeholder="Search brand..."
             allowClear
-            value={filamentSearch}
-            onChange={(e) => setFilamentSearch(e.target.value)}
-            style={{ width: 260 }}
+            value={brandSearch}
+            onChange={(e) => setBrandSearch(e.target.value)}
+            style={{ width: 200 }}
+          />
+          <Input.Search
+            placeholder="Search name..."
+            allowClear
+            value={nameSearch}
+            onChange={(e) => setNameSearch(e.target.value)}
+            style={{ width: 200 }}
           />
           <Button
             type="primary"
@@ -444,6 +431,12 @@ export const SpoolList = () => {
             id: "id",
             i18ncat: "spool",
             width: 70,
+          }),
+          SortedColumn({
+            ...commonProps,
+            id: "filament.vendor.name",
+            i18nkey: "filament.fields.vendor_name",
+            width: 150,
           }),
           SpoolIconColumn({
             ...commonProps,
