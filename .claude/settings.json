@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s \"http://localhost:7912/api/v1/filament?limit=1\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:v for k,v in d.items\\(\\) if 'filament_type' in k or 'vendor' in k.lower\\(\\)}, indent=2\\)\\)\")",
+      "Bash(python3 -c ':*)",
+      "Bash(rm -rf /home/hayesadmin/Spoolman/client/dist/*)",
+      "Bash(cp -r /home/hayesadmin/Spoolman-src/client/dist/* /home/hayesadmin/Spoolman/client/dist/)",
+      "Bash(curl -s \"http://localhost:7912/api/v1/spool_type\")",
+      "Bash(curl -s \"http://localhost:7912/api/v1/info\")",
+      "Bash(cp /home/hayesadmin/Spoolman-src/spoolman/database/models.py /home/hayesadmin/Spoolman/spoolman/database/models.py)",
+      "Bash(cp /home/hayesadmin/Spoolman-src/spoolman/database/spool_type.py /home/hayesadmin/Spoolman/spoolman/database/spool_type.py)",
+      "Bash(cp /home/hayesadmin/Spoolman-src/spoolman/api/v1/models.py /home/hayesadmin/Spoolman/spoolman/api/v1/models.py)",
+      "Bash(cp /home/hayesadmin/Spoolman-src/spoolman/api/v1/spool_type.py /home/hayesadmin/Spoolman/spoolman/api/v1/spool_type.py)",
+      "Bash(cp /home/hayesadmin/Spoolman-src/spoolman/api/v1/router.py /home/hayesadmin/Spoolman/spoolman/api/v1/router.py)",
+      "Bash(xargs kill:*)"
+    ]
+  }
+}

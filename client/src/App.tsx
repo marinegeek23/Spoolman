@@ -32,7 +32,7 @@ import { languages } from "./i18n";
 import { getAPIURL, getBasePath } from "./utils/url";
 
 interface ResourcePageProps {
-  resource: "spools" | "filaments" | "vendors" | "filament_types";
+  resource: "spools" | "filaments" | "vendors" | "filament_types" | "spool_types";
   page: "list" | "create" | "edit" | "show";
   mode?: "create" | "clone";
 }
@@ -156,6 +156,18 @@ function App() {
                   },
                 },
                 {
+                  name: "spool_type",
+                  list: "/spool_type",
+                  create: "/spool_type/create",
+                  clone: "/spool_type/clone/:id",
+                  edit: "/spool_type/edit/:id",
+                  show: "/spool_type/show/:id",
+                  meta: {
+                    canDelete: true,
+                    icon: <TagsOutlined />,
+                  },
+                },
+                {
                   name: "locations",
                   list: "/locations",
                   meta: {
@@ -234,6 +246,19 @@ function App() {
                     />
                     <Route path="edit/:id" element={<LoadableResourcePage resource="filament_types" page="edit" />} />
                     <Route path="show/:id" element={<LoadableResourcePage resource="filament_types" page="show" />} />
+                  </Route>
+                  <Route path="/spool_type">
+                    <Route index element={<LoadableResourcePage resource="spool_types" page="list" />} />
+                    <Route
+                      path="create"
+                      element={<LoadableResourcePage resource="spool_types" page="create" mode="create" />}
+                    />
+                    <Route
+                      path="clone/:id"
+                      element={<LoadableResourcePage resource="spool_types" page="create" mode="clone" />}
+                    />
+                    <Route path="edit/:id" element={<LoadableResourcePage resource="spool_types" page="edit" />} />
+                    <Route path="show/:id" element={<LoadableResourcePage resource="spool_types" page="show" />} />
                   </Route>
                   <Route path="/vendor">
                     <Route index element={<LoadableResourcePage resource="vendors" page="list" />} />

@@ -18,6 +18,7 @@ import { getCurrencySymbol, useCurrency } from "../../utils/settings";
 import { createFilamentFromExternal } from "../filaments/functions";
 import { useGetPrintSettings } from "../printing/printing";
 import SpoolQRCodePrintingDialog from "../printing/spoolQrCodePrintingDialog";
+import { getAPIURL } from "../../utils/url";
 import { useGetFilamentSelectOptions } from "./functions";
 import { ISpool, ISpoolParsedExtras, WeightToEnter } from "./model";
 
@@ -181,6 +182,16 @@ export const SpoolCreate = (props: IResourceComponentsProps & CreateOrCloneProps
     }
     if (newSpoolWeight > 0) {
       form.setFieldValue("spool_weight", newSpoolWeight);
+    } else if (selectedFilament?.vendor_id) {
+      // If the filament has no spool_weight, try to look up by vendor spool type
+      fetch(getAPIURL() + `/spool_type?vendor_id=${selectedFilament.vendor_id}&limit=1`)
+        .then((res) => (res.ok ? res.json() : []))
+        .then((data: { weight?: number }[]) => {
+          if (data.length > 0 && data[0].weight) {
+            form.setFieldValue("spool_weight", data[0].weight);
+          }
+        })
+        .catch(() => undefined);
     }
   }, [selectedFilament]);
 

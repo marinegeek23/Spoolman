@@ -21,6 +21,7 @@ class Vendor(Base):
     empty_spool_weight: Mapped[float | None] = mapped_column(comment="The weight of an empty spool.")
     comment: Mapped[str | None] = mapped_column(String(1024))
     filaments: Mapped[list["Filament"]] = relationship(back_populates="vendor")
+    spool_types: Mapped[list["SpoolType"]] = relationship(back_populates="vendor")
     external_id: Mapped[str | None] = mapped_column(String(256))
     extra: Mapped[list["VendorField"]] = relationship(
         back_populates="vendor",
@@ -116,6 +117,28 @@ class SpoolField(Base):
     spool: Mapped["Spool"] = relationship(back_populates="extra")
     key: Mapped[str] = mapped_column(String(64), primary_key=True, index=True)
     value: Mapped[str] = mapped_column(Text())
+
+
+class SpoolTypeCategory(Base):
+    __tablename__ = "spool_type_category"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    registered: Mapped[datetime] = mapped_column()
+    name: Mapped[str] = mapped_column(String(64))
+    spool_types: Mapped[list["SpoolType"]] = relationship(back_populates="category")
+
+
+class SpoolType(Base):
+    __tablename__ = "spool_type"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    registered: Mapped[datetime] = mapped_column()
+    vendor_id: Mapped[int] = mapped_column(ForeignKey("vendor.id"))
+    vendor: Mapped["Vendor"] = relationship(back_populates="spool_types")
+    spool_type_category_id: Mapped[int | None] = mapped_column(ForeignKey("spool_type_category.id"))
+    category: Mapped[Optional["SpoolTypeCategory"]] = relationship(back_populates="spool_types")
+    weight: Mapped[float | None] = mapped_column(comment="Empty spool weight in grams.")
+    color: Mapped[str | None] = mapped_column(String(64))
 
 
 class FilamentType(Base):

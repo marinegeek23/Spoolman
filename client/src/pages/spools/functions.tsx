@@ -120,6 +120,7 @@ interface SelectOption {
   value: string | number;
   weight?: number;
   spool_weight?: number;
+  vendor_id?: number;
   is_internal: boolean;
 }
 
@@ -147,6 +148,7 @@ export function useGetFilamentSelectOptions() {
           value: item.id,
           weight: item.weight,
           spool_weight: item.spool_weight,
+          vendor_id: item.vendor?.id,
           is_internal: true,
         };
       }) ?? [];

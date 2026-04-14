@@ -459,3 +459,46 @@ class FilamentTypeEvent(Event):
 
     payload: FilamentType = Field(description="Updated filament type.")
     resource: Literal["filament_type"] = Field(description="Resource type.")
+
+
+class SpoolTypeCategory(BaseModel):
+    id: int = Field(description="Unique internal ID of this spool type category.")
+    registered: SpoolmanDateTime = Field(description="When the category was registered in the database. UTC Timezone.")
+    name: str = Field(max_length=64, description="Category name.", examples=["Cardboard", "Plastic"])
+
+    @staticmethod
+    def from_db(item: models.SpoolTypeCategory) -> "SpoolTypeCategory":
+        """Create a Pydantic spool type category from a DB object."""
+        return SpoolTypeCategory(
+            id=item.id,
+            registered=item.registered,
+            name=item.name,
+        )
+
+
+class SpoolType(BaseModel):
+    id: int = Field(description="Unique internal ID of this spool type.")
+    registered: SpoolmanDateTime = Field(description="When the spool type was registered in the database. UTC Timezone.")
+    vendor: Vendor = Field(description="The manufacturer of this spool type.")
+    category: SpoolTypeCategory | None = Field(None, description="The category/material of this spool (e.g. Cardboard, Plastic).")
+    weight: float | None = Field(None, ge=0, description="Empty spool weight in grams.", examples=[200.0])
+    color: str | None = Field(None, max_length=64, description="Color description of this spool.", examples=["Black"])
+
+    @staticmethod
+    def from_db(item: models.SpoolType) -> "SpoolType":
+        """Create a Pydantic spool type from a DB object."""
+        return SpoolType(
+            id=item.id,
+            registered=item.registered,
+            vendor=Vendor.from_db(item.vendor),
+            category=SpoolTypeCategory.from_db(item.category) if item.category is not None else None,
+            weight=item.weight,
+            color=item.color,
+        )
+
+
+class SpoolTypeEvent(Event):
+    """Event."""
+
+    payload: SpoolType = Field(description="Updated spool type.")
+    resource: Literal["spool_type"] = Field(description="Resource type.")

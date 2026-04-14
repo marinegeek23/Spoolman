@@ -200,6 +200,21 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
     form.setFieldValue("name", newName);
   }, [watchedVendorName, watchedMaterial, colorType, watchedColorHex, watchedMultiColorHexes]);
 
+  // Autofill spool_weight from spool type when vendor changes (create mode only)
+  useEffect(() => {
+    if (props.mode !== "create" || !watchedVendorId) return;
+    const currentSpoolWeight = form.getFieldValue("spool_weight") as number | undefined;
+    if (currentSpoolWeight) return;
+    fetch(getAPIURL() + `/spool_type?vendor_id=${watchedVendorId}&limit=1`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: { weight?: number }[]) => {
+        if (data.length > 0 && data[0].weight) {
+          form.setFieldValue("spool_weight", data[0].weight);
+        }
+      })
+      .catch(() => undefined);
+  }, [watchedVendorId]);
+
   const [spoolQuantity, setSpoolQuantity] = useState(1);
   const [addToPrintQueue, setAddToPrintQueue] = useState(true);
   const [, setPrintQueue] = useSavedState<number[]>("printQueue", []);

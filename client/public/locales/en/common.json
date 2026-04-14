@@ -426,5 +426,31 @@
         "new_location": "New Location",
         "no_location": "No Location",
         "no_locations_help": "This page lets you organize your spools in locations, add some spools to get started!"
+    },
+    "spool_type": {
+        "spool_type": "Spool Types",
+        "fields": {
+            "id": "ID",
+            "vendor_name": "Manufacturer",
+            "category_name": "Type",
+            "category_placeholder": "Select a type...",
+            "weight": "Weight",
+            "color": "Color",
+            "registered": "Registered"
+        },
+        "fields_help": {
+            "weight": "The empty spool weight in grams."
+        },
+        "titles": {
+            "create": "Create Spool Type",
+            "clone": "Clone Spool Type",
+            "edit": "Edit Spool Type",
+            "list": "Spool Types",
+            "show": "Show Spool Type",
+            "show_title": "[Spool Type #{{id}}] {{vendor}}"
+        },
+        "form": {
+            "spool_type_updated": "This spool type has been updated by someone/something else since you opened this page. Saving will overwrite those changes!"
+        }
     }
 }
