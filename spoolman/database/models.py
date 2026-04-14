@@ -134,9 +134,9 @@ class SpoolType(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     registered: Mapped[datetime] = mapped_column()
     vendor_id: Mapped[int] = mapped_column(ForeignKey("vendor.id"))
-    vendor: Mapped["Vendor"] = relationship(back_populates="spool_types")
+    vendor: Mapped["Vendor"] = relationship(back_populates="spool_types", lazy="joined")
     spool_type_category_id: Mapped[int | None] = mapped_column(ForeignKey("spool_type_category.id"))
-    category: Mapped[Optional["SpoolTypeCategory"]] = relationship(back_populates="spool_types")
+    category: Mapped[Optional["SpoolTypeCategory"]] = relationship(back_populates="spool_types", lazy="joined")
     weight: Mapped[float | None] = mapped_column(comment="Empty spool weight in grams.")
     color: Mapped[str | None] = mapped_column(String(64))
 
