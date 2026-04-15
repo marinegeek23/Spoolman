@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from spoolman.api.v1.models import EventType, SpoolType, SpoolTypeCategory, SpoolTypeEvent
 from spoolman.database import models
+from spoolman.database import vendor as db_vendor
 from spoolman.database.utils import SortOrder
 from spoolman.exceptions import ItemNotFoundError
 from spoolman.ws import websocket_manager
@@ -75,10 +76,15 @@ async def create(
     color: str | None = None,
 ) -> models.SpoolType:
     """Add a new spool type to the database."""
+    vendor_item = await db_vendor.get_by_id(db, vendor_id)
+    category_item: models.SpoolTypeCategory | None = None
+    if spool_type_category_id is not None:
+        category_item = await get_category_by_id(db, spool_type_category_id)
+
     spool_type = models.SpoolType(
         registered=datetime.utcnow().replace(microsecond=0),
-        vendor_id=vendor_id,
-        spool_type_category_id=spool_type_category_id,
+        vendor=vendor_item,
+        category=category_item,
         weight=weight,
         color=color,
     )
@@ -138,7 +144,12 @@ async def update(
     """Update a spool type."""
     spool_type = await get_by_id(db, spool_type_id)
     for k, v in data.items():
-        setattr(spool_type, k, v)
+        if k == "vendor_id":
+            spool_type.vendor = await db_vendor.get_by_id(db, v)
+        elif k == "spool_type_category_id":
+            spool_type.category = await get_category_by_id(db, v) if v is not None else None
+        else:
+            setattr(spool_type, k, v)
     await db.commit()
     await spool_type_changed(spool_type, EventType.UPDATED)
     return spool_type

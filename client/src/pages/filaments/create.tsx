@@ -609,7 +609,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
         </Row>
         <Divider />
         <Typography.Title level={5}>Create Spools</Typography.Title>
-        <Form.Item label="Number of spools to create" style={{ marginBottom: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 24, marginBottom: 8 }}>
           <InputNumber
             min={0}
             max={100}
@@ -618,14 +618,12 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
             onChange={(v) => setSpoolQuantity(v ?? 0)}
             style={{ width: 120 }}
           />
-        </Form.Item>
-        {spoolQuantity > 0 && (
-          <Form.Item style={{ marginBottom: 8 }}>
+          {spoolQuantity > 0 && (
             <Checkbox checked={addToPrintQueue} onChange={(e) => setAddToPrintQueue(e.target.checked)}>
               Add to print queue
             </Checkbox>
-          </Form.Item>
-        )}
+          )}
+        </div>
         {spoolQuantity > 0 && (
           <Form.Item label="Print labels" style={{ marginBottom: 0 }}>
             <Select
@@ -653,17 +651,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
           width="95vw"
           style={{ top: 20 }}
           title="Print Labels"
-          footer={
-            <Button
-              type="primary"
-              onClick={() => {
-                setPrintModalOpen(false);
-                redirect(redirectAfterPrintRef.current);
-              }}
-            >
-              Done
-            </Button>
-          }
+          footer={null}
           destroyOnHidden
         >
           <SpoolQRCodePrintingDialog
@@ -674,18 +662,6 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
             }}
           />
         </Modal>
-        <Divider />
-        <Form.Item
-          label={t("filament.fields.comment")}
-          name={["comment"]}
-          rules={[{ required: false }]}
-        >
-          <TextArea maxLength={1024} />
-        </Form.Item>
-        <Typography.Title level={5}>{t("settings.extra_fields.tab")}</Typography.Title>
-        {extraFields.data?.map((field, index) => (
-          <ExtraFieldFormItem key={index} field={field} />
-        ))}
       </Form>
       </Create>
     </>

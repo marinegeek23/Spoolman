@@ -1,7 +1,8 @@
-import { EditOutlined, EyeOutlined, FilterOutlined, PlusSquareOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, EyeOutlined, FilterOutlined, PlusSquareOutlined } from "@ant-design/icons";
 import { List, useTable } from "@refinedev/antd";
 import { useInvalidate, useNavigation, useTranslate } from "@refinedev/core";
-import { Button, Dropdown, Table } from "antd";
+import { Button, Dropdown, Modal, Table } from "antd";
+import { getAPIURL } from "../../utils/url";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import { useCallback, useMemo, useState } from "react";
@@ -95,10 +96,26 @@ export const SpoolTypeList = () => {
   }
 
   const { editUrl, showUrl, cloneUrl } = useNavigation();
+
+  const handleDelete = (record: ISpoolTypeCollapsed) => {
+    Modal.confirm({
+      title: t("buttons.delete"),
+      content: `Delete spool type #${record.id} (${record["vendor.name"]})?`,
+      okText: t("buttons.delete"),
+      okButtonProps: { danger: true },
+      cancelText: t("buttons.cancel"),
+      onOk: async () => {
+        await fetch(getAPIURL() + `/spool_type/${record.id}`, { method: "DELETE" });
+        invalidate({ resource: "spool_type", invalidates: ["list"] });
+      },
+    });
+  };
+
   const actions = (record: ISpoolTypeCollapsed) => [
     { name: t("buttons.show"), icon: <EyeOutlined />, link: showUrl("spool_type", record.id) },
     { name: t("buttons.edit"), icon: <EditOutlined />, link: editUrl("spool_type", record.id) },
     { name: t("buttons.clone"), icon: <PlusSquareOutlined />, link: cloneUrl("spool_type", record.id) },
+    { name: t("buttons.delete"), icon: <DeleteOutlined />, onClick: () => handleDelete(record) },
   ];
 
   const commonProps = { t, navigate, actions, dataSource, tableState, sorter: true };

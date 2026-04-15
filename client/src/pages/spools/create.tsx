@@ -608,17 +608,7 @@ export const SpoolCreate = (props: IResourceComponentsProps & CreateOrCloneProps
       width="95vw"
       style={{ top: 20 }}
       title="Print Labels"
-      footer={
-        <Button
-          type="primary"
-          onClick={() => {
-            setPrintModalOpen(false);
-            redirect(redirectAfterPrintRef.current);
-          }}
-        >
-          Done
-        </Button>
-      }
+      footer={null}
       destroyOnHidden
     >
       <SpoolQRCodePrintingDialog
