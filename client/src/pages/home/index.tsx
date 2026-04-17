@@ -114,6 +114,24 @@ function DonutChart({ data, total, label, size = 220 }: DonutChartProps) {
   );
 }
 
+function ChartWithLegend({ data, total, label, size }: DonutChartProps) {
+  const { token } = useToken();
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+      <DonutChart data={data} total={total} label={label} size={size} />
+      <div style={{ paddingTop: 24, minWidth: 160 }}>
+        {data.map((entry) => (
+          <div key={entry.name} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, fontSize: 12 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: entry.color, flexShrink: 0 }} />
+            <span style={{ color: token.colorText, flexGrow: 1 }}>{entry.name}</span>
+            <span style={{ color: token.colorTextSecondary, marginLeft: 8 }}>{formatWeight(entry.value)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export const Home = () => {
   const { token } = useToken();
   const t = useTranslate();
@@ -239,9 +257,9 @@ export const Home = () => {
 
       {hasSpools && totalWeight > 0 && (
         <div style={{ marginTop: 40 }}>
-          <div style={{ display: "flex", justifyContent: "space-around", flexWrap: "wrap", gap: 24 }}>
-            <DonutChart data={colorChartData} total={totalWeight} label="Color" />
-            <DonutChart data={materialChartData} total={totalWeight} label="Material" />
+          <div style={{ display: "flex", justifyContent: "space-around", flexWrap: "wrap", gap: 32 }}>
+            <ChartWithLegend data={colorChartData} total={totalWeight} label="Color" />
+            <ChartWithLegend data={materialChartData} total={totalWeight} label="Material" />
           </div>
           <div style={{ textAlign: "center", marginTop: 12, color: token.colorTextSecondary, fontSize: 12 }}>
             Total remaining weight: {formatWeight(totalWeight)} · Non-archived spools
