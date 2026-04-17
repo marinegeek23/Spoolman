@@ -160,11 +160,23 @@ export const Home = () => {
   const colorChartData = useMemo(() => {
     const map = new Map<string, { name: string; value: number; color: string }>();
     for (const spool of allSpools.result?.data ?? []) {
-      const hex = spool.filament?.color_hex;
-      const key = hex ?? "none";
-      const color = hex ? `#${hex}` : "#555555";
-      const name = hex ? `#${hex}` : "No color";
+      const f = spool.filament;
       const weight = spool.remaining_weight ?? 0;
+      let key: string, name: string, color: string;
+      if (f?.color_hex) {
+        key = f.color_hex;
+        color = `#${f.color_hex}`;
+        name = `#${f.color_hex}`;
+      } else if (f?.multi_color_hexes) {
+        const dir = f.multi_color_direction ?? "coextruded";
+        key = `multi_${dir}`;
+        name = dir === "longitudinal" ? "Longitudinal" : "Coextruded";
+        color = dir === "longitudinal" ? "#a78bfa" : "#f472b6";
+      } else {
+        key = "none";
+        name = "No color";
+        color = "#555555";
+      }
       const existing = map.get(key);
       if (existing) existing.value += weight;
       else map.set(key, { name, value: weight, color });
