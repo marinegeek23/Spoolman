@@ -258,7 +258,7 @@ export const Home = () => {
       {hasSpools && totalWeight > 0 && (
         <div style={{ marginTop: 40 }}>
           <div style={{ display: "flex", justifyContent: "space-around", flexWrap: "wrap", gap: 32 }}>
-            <ChartWithLegend data={colorChartData} total={totalWeight} label="Color" />
+            <DonutChart data={colorChartData} total={totalWeight} label="Color" />
             <ChartWithLegend data={materialChartData} total={totalWeight} label="Material" />
           </div>
           <div style={{ textAlign: "center", marginTop: 12, color: token.colorTextSecondary, fontSize: 12 }}>
