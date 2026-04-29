@@ -105,17 +105,25 @@ const liveProvider = (apiUrl: string): LiveProvider => ({
       throw new Error("[useSubscription]: `resource` is required in `params`");
     }
 
-    let idList: BaseKey[];
-    if (ids) idList = ids;
-    else if (id) idList = [id];
-    else {
-      // No ID specified, subscribe to all IDs
-      return [subscribeSingle(apiUrl, channel, resource, callback)];
+    // For list subscriptions with many IDs, use a single root WebSocket and filter
+    // client-side. Opening one socket per row would create hundreds of connections.
+    if (ids && ids.length > 0) {
+      const idSet = new Set(ids.map(String));
+      return [
+        subscribeSingle(apiUrl, channel, resource, (event) => {
+          if (event.payload.ids?.some((eid) => idSet.has(String(eid)))) {
+            callback(event);
+          }
+        }),
+      ];
     }
 
-    return idList.map((id) => {
-      return subscribeSingle(apiUrl, channel, resource, callback, id);
-    });
+    if (id) {
+      return [subscribeSingle(apiUrl, channel, resource, callback, id)];
+    }
+
+    // No ID specified — subscribe to all changes on the resource
+    return [subscribeSingle(apiUrl, channel, resource, callback)];
   },
   unsubscribe: (closers: (() => void)[]) => {
     closers.forEach((fn) => fn());
