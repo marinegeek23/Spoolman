@@ -123,22 +123,24 @@ export const SpoolList = () => {
   // State for the switch to show archived spools
   const [showArchived, setShowArchived] = useSavedState("spoolList-showArchived", false);
 
-  // Server-side brand + name search
+  // Server-side brand + name + id search
   const [brandSearch, setBrandSearch] = useState("");
   const [nameSearch, setNameSearch] = useState("");
+  const [idSearch, setIdSearch] = useState("");
 
   useEffect(() => {
     const timer = setTimeout(() => {
       const otherFilters = filters.filter(
-        (f) => "field" in f && !["filament.vendor.name", "filament.name"].includes(f.field),
+        (f) => "field" in f && !["filament.vendor.name", "filament.name", "id"].includes(f.field),
       );
       const newFilters = [...otherFilters];
       if (brandSearch.trim()) newFilters.push({ field: "filament.vendor.name", operator: "eq", value: brandSearch.trim() });
       if (nameSearch.trim()) newFilters.push({ field: "filament.name", operator: "eq", value: nameSearch.trim() });
+      if (idSearch.trim()) newFilters.push({ field: "id", operator: "eq", value: idSearch.trim() });
       setFilters(newFilters, "replace");
     }, 300);
     return () => clearTimeout(timer);
-  }, [brandSearch, nameSearch]);
+  }, [brandSearch, nameSearch, idSearch]);
 
   // Print queue
   const [printQueue, setPrintQueue] = useSavedState<number[]>("printQueue", []);
@@ -308,6 +310,13 @@ export const SpoolList = () => {
             value={nameSearch}
             onChange={(e) => setNameSearch(e.target.value)}
             style={{ width: 200 }}
+          />
+          <Input.Search
+            placeholder="Search spool #..."
+            allowClear
+            value={idSearch}
+            onChange={(e) => setIdSearch(e.target.value)}
+            style={{ width: 160 }}
           />
           <Button
             type="primary"
