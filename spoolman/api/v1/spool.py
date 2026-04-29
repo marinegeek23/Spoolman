@@ -128,6 +128,16 @@ class SpoolMeasureParameters(BaseModel):
 async def find(
     *,
     db: Annotated[AsyncSession, Depends(get_db_session)],
+    spool_id: Annotated[
+        str | None,
+        Query(
+            alias="id",
+            title="Spool ID",
+            description="Match an exact spool ID. Separate multiple IDs with a comma.",
+            examples=["1", "1,2"],
+            pattern=r"^-?\d+(,-?\d+)*$",
+        ),
+    ] = None,
     filament_name_old: Annotated[
         str | None,
         Query(alias="filament_name", title="Filament Name", description="See filament.name.", deprecated=True),
@@ -273,6 +283,8 @@ async def find(
             field, direction = sort_item.split(":")
             sort_by[field] = SortOrder[direction.upper()]
 
+    spool_ids = [int(i) for i in spool_id.split(",")] if spool_id is not None else None
+
     filament_id = filament_id if filament_id is not None else filament_id_old
     if filament_id is not None:
         filament_ids = [int(filament_id_item) for filament_id_item in filament_id.split(",")]
@@ -287,6 +299,7 @@ async def find(
 
     db_items, total_count = await spool.find(
         db=db,
+        spool_id=spool_ids,
         filament_name=filament_name if filament_name is not None else filament_name_old,
         filament_id=filament_ids,
         filament_material=filament_material if filament_material is not None else filament_material_old,

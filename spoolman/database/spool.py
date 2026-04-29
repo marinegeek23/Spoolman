@@ -114,6 +114,7 @@ async def get_by_id(db: AsyncSession, spool_id: int) -> models.Spool:
 async def find(  # noqa: C901, PLR0912
     *,
     db: AsyncSession,
+    spool_id: int | Sequence[int] | None = None,
     filament_name: str | None = None,
     filament_id: int | Sequence[int] | None = None,
     filament_material: str | None = None,
@@ -140,6 +141,7 @@ async def find(  # noqa: C901, PLR0912
         .options(contains_eager(models.Spool.filament).contains_eager(models.Filament.vendor))
     )
 
+    stmt = add_where_clause_int(stmt, models.Spool.id, spool_id)
     stmt = add_where_clause_int(stmt, models.Spool.filament_id, filament_id)
     stmt = add_where_clause_int_opt(stmt, models.Filament.vendor_id, vendor_id)
     stmt = add_where_clause_str(stmt, models.Vendor.name, vendor_name)
