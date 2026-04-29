@@ -163,6 +163,19 @@ async def notify_any(websocket: WebSocket) -> None:
         websocket_manager.disconnect(("spool_type",), websocket)
 
 
+@router.websocket("/{spool_type_id}", name="Listen to spool_type changes by ID")
+async def notify(websocket: WebSocket, spool_type_id: int) -> None:
+    await websocket.accept()
+    websocket_manager.connect(("spool_type", str(spool_type_id)), websocket)
+    try:
+        while True:
+            await asyncio.sleep(0.5)
+            if await websocket.receive_text():
+                await websocket.send_json({"status": "healthy"})
+    except WebSocketDisconnect:
+        websocket_manager.disconnect(("spool_type", str(spool_type_id)), websocket)
+
+
 @router.get(
     "/{spool_type_id}",
     name="Get spool type",
