@@ -4,6 +4,7 @@ import { Alert, Col, ColorPicker, DatePicker, Form, Input, InputNumber, message,
 import TextArea from "antd/es/input/TextArea";
 import dayjs from "dayjs";
 import { useEffect, useState } from "react";
+import { AssistButton, useAssistHighlight } from "../../components/assistModal";
 import { ExtraFieldFormItem, ParsedExtras, StringifiedExtras } from "../../components/extraFields";
 import { MultiColorPicker } from "../../components/multiColorPicker";
 import { formatNumberOnUserInput, numberParser, numberParserAllowEmpty } from "../../utils/parsing";
@@ -11,6 +12,7 @@ import { EntityType, useGetFields } from "../../utils/queryFields";
 import { getCurrencySymbol, useCurrency } from "../../utils/settings";
 import { IFilamentType } from "../filament_types/model";
 import { IVendor } from "../vendors/model";
+import { FilamentAssistModal } from "./assist";
 import { IFilament, IFilamentParsedExtras } from "./model";
 
 /*
@@ -27,6 +29,8 @@ export const FilamentEdit = () => {
   const extraFields = useGetFields(EntityType.filament);
   const currency = useCurrency();
   const [colorType, setColorType] = useState<"single" | "multi">("single");
+  const [isAssistOpen, setIsAssistOpen] = useState(false);
+  const assist = useAssistHighlight();
 
   const { form, formProps, saveButtonProps } = useForm<IFilament, HttpError, IFilament, IFilament>({
     liveMode: "manual",
@@ -102,8 +106,27 @@ export const FilamentEdit = () => {
   };
 
   return (
-    <Edit saveButtonProps={saveButtonProps}>
+    <Edit
+      saveButtonProps={saveButtonProps}
+      headerButtons={({ defaultButtons }) => (
+        <>
+          <AssistButton onClick={() => setIsAssistOpen(true)} />
+          {defaultButtons}
+        </>
+      )}
+    >
       {contextHolder}
+      <FilamentAssistModal
+        open={isAssistOpen}
+        onClose={() => setIsAssistOpen(false)}
+        form={form}
+        vendors={(selectProps.options ?? []) as { label: string; value: number }[]}
+        filamentTypes={filamentTypeQuery.data?.data ?? []}
+        currency={currency}
+        colorType={colorType}
+        setColorType={setColorType}
+        onFilled={assist.highlight}
+      />
       <Form {...formProps} layout="vertical">
         <Form.Item
           label={t("filament.fields.id")}
@@ -124,6 +147,7 @@ export const FilamentEdit = () => {
         </Form.Item>
         <Form.Item
           label={t("filament.fields.vendor")}
+          className={assist.cls("vendor_id")}
           name={["vendor_id"]}
           rules={[{ required: false }]}
           normalize={(value) => (value === undefined ? null : value)}
@@ -144,6 +168,7 @@ export const FilamentEdit = () => {
         <Form.Item
           label={t("filament.fields.material")}
           help={t("filament.fields_help.material")}
+          className={assist.cls("filament_type_id")}
           name={["filament_type_id"]}
           rules={[{ required: false }]}
         >
@@ -172,6 +197,7 @@ export const FilamentEdit = () => {
         </Form.Item>
         {colorType == "single" && (
           <Form.Item
+            className={assist.cls("color_hex")}
             name={"color_hex"}
             rules={[{ required: false }]}
             getValueFromEvent={(e) => e?.toHex()}
@@ -181,6 +207,7 @@ export const FilamentEdit = () => {
         )}
         {colorType == "multi" && (
           <Form.Item
+            className={assist.cls("multi_color_direction")}
             name={"multi_color_direction"}
             help={t("filament.fields_help.multi_color_direction")}
             rules={[{ required: true }]}
@@ -193,13 +220,14 @@ export const FilamentEdit = () => {
           </Form.Item>
         )}
         {colorType == "multi" && (
-          <Form.Item name={"multi_color_hexes"} rules={[{ required: false }]}>
+          <Form.Item className={assist.cls("multi_color_hexes")} name={"multi_color_hexes"} rules={[{ required: false }]}>
             <MultiColorPicker min={2} max={14} />
           </Form.Item>
         )}
         <Form.Item
           label={t("filament.fields.name")}
           help={t("filament.fields_help.name")}
+          className={assist.cls("name")}
           name={["name"]}
           rules={[{ required: false }]}
         >
@@ -209,6 +237,7 @@ export const FilamentEdit = () => {
           <Col xs={24} sm={12}>
             <Form.Item
               label={t("filament.fields.density")}
+              className={assist.cls("density")}
               name={["density"]}
               rules={[{ required: true, type: "number", min: 0, max: 100 }]}
             >
@@ -216,6 +245,7 @@ export const FilamentEdit = () => {
             </Form.Item>
             <Form.Item
               label={t("filament.fields.diameter")}
+              className={assist.cls("diameter")}
               name={["diameter"]}
               rules={[{ required: true, type: "number", min: 0, max: 10 }]}
             >
@@ -224,6 +254,7 @@ export const FilamentEdit = () => {
             <Form.Item
               label={t("filament.fields.weight")}
               help={t("filament.fields_help.weight")}
+              className={assist.cls("weight")}
               name={["weight"]}
               rules={[{ required: false, type: "number", min: 0 }]}
             >
@@ -232,6 +263,7 @@ export const FilamentEdit = () => {
             <Form.Item
               label={t("filament.fields.spool_weight")}
               help={t("filament.fields_help.spool_weight")}
+              className={assist.cls("spool_weight")}
               name={["spool_weight"]}
               rules={[{ required: false, type: "number", min: 0 }]}
             >
@@ -242,6 +274,7 @@ export const FilamentEdit = () => {
             <Form.Item
               label={t("filament.fields.price")}
               help={t("filament.fields_help.price")}
+              className={assist.cls("price")}
               name={["price"]}
               rules={[{ required: false, type: "number", min: 0 }]}
             >
@@ -255,6 +288,7 @@ export const FilamentEdit = () => {
             </Form.Item>
             <Form.Item
               label={t("filament.fields.settings_extruder_temp")}
+              className={assist.cls("settings_extruder_temp")}
               name={["settings_extruder_temp"]}
               rules={[{ required: false, type: "number", min: 0 }]}
             >
@@ -262,6 +296,7 @@ export const FilamentEdit = () => {
             </Form.Item>
             <Form.Item
               label={t("filament.fields.settings_bed_temp")}
+              className={assist.cls("settings_bed_temp")}
               name={["settings_bed_temp"]}
               rules={[{ required: false, type: "number", min: 0 }]}
             >

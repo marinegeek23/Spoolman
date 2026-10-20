@@ -11,6 +11,7 @@ import { getAPIURL } from "../../utils/url";
 import { useGetPrintSettings } from "../printing/printing";
 import SpoolQRCodePrintingDialog from "../printing/spoolQrCodePrintingDialog";
 import { ExtraFieldFormItem, ParsedExtras, StringifiedExtras } from "../../components/extraFields";
+import { AssistButton, useAssistHighlight } from "../../components/assistModal";
 import { FilamentImportModal } from "../../components/filamentImportModal";
 import { MultiColorPicker } from "../../components/multiColorPicker";
 import { formatNumberOnUserInput, numberParser, numberParserAllowEmpty } from "../../utils/parsing";
@@ -20,6 +21,7 @@ import { getCurrencySymbol, useCurrency } from "../../utils/settings";
 import { getOrCreateVendorFromExternal } from "../vendors/functions";
 import { IFilamentType } from "../filament_types/model";
 import { IVendor } from "../vendors/model";
+import { FilamentAssistModal } from "./assist";
 import { IFilament, IFilamentParsedExtras } from "./model";
 
 dayjs.extend(utc);
@@ -110,6 +112,8 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
   const extraFields = useGetFields(EntityType.filament);
   const currency = useCurrency();
   const [isImportExtOpen, setIsImportExtOpen] = useState(false);
+  const [isAssistOpen, setIsAssistOpen] = useState(false);
+  const assist = useAssistHighlight();
   const invalidate = useInvalidate();
   const [colorType, setColorType] = useState<"single" | "multi">("single");
 
@@ -357,6 +361,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
         <Button type="primary" onClick={() => setIsImportExtOpen(true)}>
           {t("filament.form.import_external")}
         </Button>
+        <AssistButton onClick={() => setIsAssistOpen(true)} />
         <Button type="primary" onClick={() => handleSubmit("list")}>
           {t("buttons.save")}
         </Button>
@@ -388,9 +393,21 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
         }}
         onClose={() => setIsImportExtOpen(false)}
       />
+      <FilamentAssistModal
+        open={isAssistOpen}
+        onClose={() => setIsAssistOpen(false)}
+        form={form}
+        vendors={(vendorSelect.options ?? []) as { label: string; value: number }[]}
+        filamentTypes={filamentTypeQuery.data?.data ?? []}
+        currency={currency}
+        colorType={colorType}
+        setColorType={setColorType}
+        onFilled={assist.highlight}
+      />
       <Form {...formProps} layout="vertical">
         <Form.Item
           label={t("filament.fields.vendor")}
+          className={assist.cls("vendor_id")}
           name={["vendor_id"]}
           rules={[
             {
@@ -412,6 +429,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
           />
         </Form.Item>
         <Form.Item
+          className={assist.cls("filament_type_id")}
           label={t("filament.fields.material")}
           help={t("filament.fields_help.material")}
         >
@@ -487,6 +505,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
         </Form.Item>
         {colorType == "single" && (
           <Form.Item
+            className={assist.cls("color_hex")}
             name={"color_hex"}
             rules={[
               {
@@ -502,6 +521,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
         )}
         {colorType == "multi" && (
           <Form.Item
+            className={assist.cls("multi_color_direction")}
             name={"multi_color_direction"}
             help={t("filament.fields_help.multi_color_direction")}
             rules={[
@@ -519,6 +539,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
         )}
         {colorType == "multi" && (
           <Form.Item
+            className={assist.cls("multi_color_hexes")}
             name={"multi_color_hexes"}
             rules={[
               {
@@ -532,6 +553,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
         <Form.Item
           label={t("filament.fields.name")}
           help={t("filament.fields_help.name")}
+          className={assist.cls("name")}
           name={["name"]}
           rules={[
             {
@@ -545,6 +567,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
           <Col xs={24} sm={12}>
             <Form.Item
               label={t("filament.fields.density")}
+              className={assist.cls("density")}
               name={["density"]}
               rules={[{ required: true, type: "number", min: 0, max: 100 }]}
             >
@@ -552,6 +575,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
             </Form.Item>
             <Form.Item
               label={t("filament.fields.diameter")}
+              className={assist.cls("diameter")}
               name={["diameter"]}
               initialValue={1.75}
               rules={[{ required: true, type: "number", min: 0, max: 10 }]}
@@ -561,6 +585,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
             <Form.Item
               label={t("filament.fields.weight")}
               help={t("filament.fields_help.weight")}
+              className={assist.cls("weight")}
               name={["weight"]}
               initialValue={1000}
               rules={[{ required: false, type: "number", min: 0 }]}
@@ -570,6 +595,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
             <Form.Item
               label={t("filament.fields.spool_weight")}
               help={t("filament.fields_help.spool_weight")}
+              className={assist.cls("spool_weight")}
               name={["spool_weight"]}
               rules={[{ required: false, type: "number", min: 0 }]}
             >
@@ -580,6 +606,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
             <Form.Item
               label={t("filament.fields.price")}
               help={t("filament.fields_help.price")}
+              className={assist.cls("price")}
               name={["price"]}
               rules={[{ required: false, type: "number", min: 0 }]}
             >
@@ -593,6 +620,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
             </Form.Item>
             <Form.Item
               label={t("filament.fields.settings_extruder_temp")}
+              className={assist.cls("settings_extruder_temp")}
               name={["settings_extruder_temp"]}
               rules={[{ required: false, type: "number", min: 0 }]}
             >
@@ -600,6 +628,7 @@ export const FilamentCreate = (props: IResourceComponentsProps & CreateOrClonePr
             </Form.Item>
             <Form.Item
               label={t("filament.fields.settings_bed_temp")}
+              className={assist.cls("settings_bed_temp")}
               name={["settings_bed_temp"]}
               rules={[{ required: false, type: "number", min: 0 }]}
             >

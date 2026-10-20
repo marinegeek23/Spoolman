@@ -1,0 +1,6 @@
+/* Form items filled in by AI assist, until the form is saved */
+.assist-filled .ant-form-item-control-input {
+  outline: 2px solid #9254de;
+  outline-offset: 3px;
+  border-radius: 6px;
+}
