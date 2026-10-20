@@ -3,12 +3,16 @@ import { Edit, useForm, useSelect } from "@refinedev/antd";
 import { HttpError, useTranslate } from "@refinedev/core";
 import { Alert, Button, Form, Input, InputNumber, Modal, Select, message } from "antd";
 import { useEffect, useMemo, useState } from "react";
+import { AssistButton, useAssistHighlight } from "../../components/assistModal";
 import { getAPIURL } from "../../utils/url";
 import { IVendor } from "../vendors/model";
+import { SpoolTypeAssistModal } from "./assist";
 import { ISpoolType, ISpoolTypeCategory } from "./model";
 
 export const SpoolTypeEdit = () => {
   const t = useTranslate();
+  const [isAssistOpen, setIsAssistOpen] = useState(false);
+  const assist = useAssistHighlight();
   const [messageApi, contextHolder] = message.useMessage();
   const [hasChanged, setHasChanged] = useState(false);
 
@@ -89,8 +93,25 @@ export const SpoolTypeEdit = () => {
   };
 
   return (
-    <Edit saveButtonProps={saveButtonProps}>
+    <Edit
+      saveButtonProps={saveButtonProps}
+      headerButtons={({ defaultButtons }) => (
+        <>
+          <AssistButton onClick={() => setIsAssistOpen(true)} />
+          {defaultButtons}
+        </>
+      )}
+    >
       {contextHolder}
+      <SpoolTypeAssistModal
+        open={isAssistOpen}
+        onClose={() => setIsAssistOpen(false)}
+        form={form}
+        onFilled={assist.highlight}
+        vendors={(vendorSelect.options ?? []) as { label: string; value: number }[]}
+        categories={categories}
+        setCategories={setCategories}
+      />
       <Form {...formProps} layout="vertical">
         <Form.Item
           label={t("spool_type.fields.vendor_name")}
@@ -111,7 +132,7 @@ export const SpoolTypeEdit = () => {
             }
           />
         </Form.Item>
-        <Form.Item label={t("spool_type.fields.category_name")}>
+        <Form.Item className={assist.cls("spool_type_category_id")} label={t("spool_type.fields.category_name")}>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <Form.Item name={["spool_type_category_id"]} noStyle>
               <Select
@@ -132,6 +153,7 @@ export const SpoolTypeEdit = () => {
         </Form.Item>
         <Form.Item
           label={t("spool_type.fields.weight")}
+          className={assist.cls("weight")}
           name={["weight"]}
           rules={[{ required: false, type: "number", min: 0 }]}
         >
@@ -139,6 +161,7 @@ export const SpoolTypeEdit = () => {
         </Form.Item>
         <Form.Item
           label={t("spool_type.fields.color")}
+          className={assist.cls("color")}
           name={["color"]}
           rules={[{ required: false }]}
         >

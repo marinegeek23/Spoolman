@@ -6,6 +6,7 @@ import { message } from "antd/lib";
 import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
+import { AssistButton, useAssistHighlight } from "../../components/assistModal";
 import { ExtraFieldFormItem, ParsedExtras, StringifiedExtras } from "../../components/extraFields";
 import { useSpoolmanLocations } from "../../components/otherModels";
 import { searchMatches } from "../../utils/filtering";
@@ -14,6 +15,7 @@ import { EntityType, useGetFields } from "../../utils/queryFields";
 import { getCurrencySymbol, useCurrency } from "../../utils/settings";
 import { createFilamentFromExternal } from "../filaments/functions";
 import { useLocations } from "../locations/functions";
+import { SpoolAssistModal } from "./assist";
 import { useGetFilamentSelectOptions } from "./functions";
 import { ISpool, ISpoolParsedExtras, WeightToEnter } from "./model";
 
@@ -30,6 +32,8 @@ type ISpoolRequest = ISpoolParsedExtras & {
 
 export const SpoolEdit = () => {
   const t = useTranslate();
+  const [isAssistOpen, setIsAssistOpen] = useState(false);
+  const assist = useAssistHighlight();
   const [messageApi, contextHolder] = message.useMessage();
   const [hasChanged, setHasChanged] = useState(false);
   const extraFields = useGetFields(EntityType.spool);
@@ -231,8 +235,23 @@ export const SpoolEdit = () => {
   }, [initialUsedWeight]);
 
   return (
-    <Edit saveButtonProps={saveButtonProps}>
+    <Edit
+      saveButtonProps={saveButtonProps}
+      headerButtons={({ defaultButtons }) => (
+        <>
+          <AssistButton onClick={() => setIsAssistOpen(true)} />
+          {defaultButtons}
+        </>
+      )}
+    >
       {contextHolder}
+      <SpoolAssistModal
+        open={isAssistOpen}
+        onClose={() => setIsAssistOpen(false)}
+        form={form}
+        onFilled={assist.highlight}
+        filament={selectedFilament as { label: string; weight?: number; spool_weight?: number } | null}
+      />
       <Form {...formProps} layout="vertical">
         <Form.Item
           label={t("spool.fields.id")}
@@ -308,6 +327,7 @@ export const SpoolEdit = () => {
         <Form.Item
           label={t("spool.fields.price")}
           help={t("spool.fields_help.price")}
+          className={assist.cls("price")}
           name={["price"]}
           rules={[
             {
@@ -327,6 +347,7 @@ export const SpoolEdit = () => {
         <Form.Item
           label={t("spool.fields.initial_weight")}
           help={t("spool.fields_help.initial_weight")}
+          className={assist.cls("initial_weight")}
           name={["initial_weight"]}
           rules={[
             {
@@ -342,6 +363,7 @@ export const SpoolEdit = () => {
         <Form.Item
           label={t("spool.fields.spool_weight")}
           help={t("spool.fields_help.spool_weight")}
+          className={assist.cls("spool_weight")}
           name={["spool_weight"]}
           rules={[
             {

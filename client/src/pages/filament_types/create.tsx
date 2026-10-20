@@ -4,10 +4,12 @@ import { Button, Form, Input, InputNumber, Typography } from "antd";
 import TextArea from "antd/es/input/TextArea";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { AssistButton, useAssistHighlight } from "../../components/assistModal";
 import { ExtraFieldFormItem, ParsedExtras, StringifiedExtras } from "../../components/extraFields";
 import { formatNumberOnUserInput, numberParser } from "../../utils/parsing";
 import { EntityType, useGetFields } from "../../utils/queryFields";
+import { FilamentTypeAssistModal } from "./assist";
 import { IFilamentType, IFilamentTypeParsedExtras } from "./model";
 
 dayjs.extend(utc);
@@ -18,6 +20,8 @@ interface CreateOrCloneProps {
 
 export const FilamentTypeCreate = (props: IResourceComponentsProps & CreateOrCloneProps) => {
   const t = useTranslate();
+  const [isAssistOpen, setIsAssistOpen] = useState(false);
+  const assist = useAssistHighlight();
   const extraFields = useGetFields(EntityType.filament_type);
 
   const { form, formProps, formLoading, onFinish, redirect } = useForm<
@@ -54,6 +58,7 @@ export const FilamentTypeCreate = (props: IResourceComponentsProps & CreateOrClo
     <Create
       title={props.mode === "create" ? t("filament_type.titles.create") : t("filament_type.titles.clone")}
       isLoading={formLoading}
+      headerButtons={() => <AssistButton onClick={() => setIsAssistOpen(true)} />}
       footerButtons={() => (
         <>
           <Button type="primary" onClick={() => handleSubmit("list")}>
@@ -65,13 +70,20 @@ export const FilamentTypeCreate = (props: IResourceComponentsProps & CreateOrClo
         </>
       )}
     >
+      <FilamentTypeAssistModal
+        open={isAssistOpen}
+        onClose={() => setIsAssistOpen(false)}
+        form={form}
+        onFilled={assist.highlight}
+      />
       <Form {...formProps} layout="vertical">
-        <Form.Item label={t("filament_type.fields.name")} name={["name"]} rules={[{ required: true }]}>
+        <Form.Item className={assist.cls("name")} label={t("filament_type.fields.name")} name={["name"]} rules={[{ required: true }]}>
           <Input maxLength={64} />
         </Form.Item>
         <Form.Item
           label={t("filament_type.fields.density")}
           help={t("filament_type.fields_help.density")}
+          className={assist.cls("density")}
           name={["density"]}
           rules={[{ required: false, type: "number", min: 0, max: 100 }]}
         >
@@ -79,6 +91,7 @@ export const FilamentTypeCreate = (props: IResourceComponentsProps & CreateOrClo
         </Form.Item>
         <Form.Item
           label={t("filament_type.fields.settings_extruder_temp")}
+          className={assist.cls("settings_extruder_temp")}
           name={["settings_extruder_temp"]}
           rules={[{ required: false, type: "number", min: 0 }]}
         >
@@ -86,12 +99,13 @@ export const FilamentTypeCreate = (props: IResourceComponentsProps & CreateOrClo
         </Form.Item>
         <Form.Item
           label={t("filament_type.fields.settings_bed_temp")}
+          className={assist.cls("settings_bed_temp")}
           name={["settings_bed_temp"]}
           rules={[{ required: false, type: "number", min: 0 }]}
         >
           <InputNumber addonAfter="°C" precision={0} style={{ width: 200 }} />
         </Form.Item>
-        <Form.Item label={t("filament_type.fields.comment")} name={["comment"]} rules={[{ required: false }]}>
+        <Form.Item className={assist.cls("comment")} label={t("filament_type.fields.comment")} name={["comment"]} rules={[{ required: false }]}>
           <TextArea maxLength={1024} />
         </Form.Item>
         <Typography.Title level={5}>{t("settings.extra_fields.tab")}</Typography.Title>

@@ -4,8 +4,10 @@ import { Alert, DatePicker, Form, Input, InputNumber, message, Typography } from
 import TextArea from "antd/es/input/TextArea";
 import dayjs from "dayjs";
 import { useState } from "react";
+import { AssistButton, useAssistHighlight } from "../../components/assistModal";
 import { ExtraFieldFormItem, ParsedExtras, StringifiedExtras } from "../../components/extraFields";
 import { EntityType, useGetFields } from "../../utils/queryFields";
+import { VendorAssistModal } from "./assist";
 import { IVendor, IVendorParsedExtras } from "./model";
 
 /*
@@ -17,11 +19,13 @@ the form's onFinish method. Form.Item's normalize should do this, but it doesn't
 
 export const VendorEdit = () => {
   const t = useTranslate();
+  const [isAssistOpen, setIsAssistOpen] = useState(false);
+  const assist = useAssistHighlight();
   const [messageApi, contextHolder] = message.useMessage();
   const [hasChanged, setHasChanged] = useState(false);
   const extraFields = useGetFields(EntityType.vendor);
 
-  const { formProps, saveButtonProps } = useForm<IVendor, HttpError, IVendor, IVendor>({
+  const { form, formProps, saveButtonProps } = useForm<IVendor, HttpError, IVendor, IVendor>({
     liveMode: "manual",
     onLiveEvent() {
       // Warn the user if the vendor has been updated since the form was opened
@@ -49,8 +53,22 @@ export const VendorEdit = () => {
   };
 
   return (
-    <Edit saveButtonProps={saveButtonProps}>
+    <Edit
+      saveButtonProps={saveButtonProps}
+      headerButtons={({ defaultButtons }) => (
+        <>
+          <AssistButton onClick={() => setIsAssistOpen(true)} />
+          {defaultButtons}
+        </>
+      )}
+    >
       {contextHolder}
+      <VendorAssistModal
+        open={isAssistOpen}
+        onClose={() => setIsAssistOpen(false)}
+        form={form}
+        onFilled={assist.highlight}
+      />
       <Form {...formProps} layout="vertical">
         <Form.Item
           label={t("vendor.fields.id")}
@@ -79,6 +97,7 @@ export const VendorEdit = () => {
         </Form.Item>
         <Form.Item
           label={t("vendor.fields.name")}
+          className={assist.cls("name")}
           name={["name"]}
           rules={[
             {
@@ -102,6 +121,7 @@ export const VendorEdit = () => {
         <Form.Item
           label={t("vendor.fields.empty_spool_weight")}
           help={t("vendor.fields_help.empty_spool_weight")}
+          className={assist.cls("empty_spool_weight")}
           name={["empty_spool_weight"]}
           rules={[
             {

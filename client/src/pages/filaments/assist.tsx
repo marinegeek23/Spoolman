@@ -140,9 +140,11 @@ export function FilamentAssistModal(props: {
       {
         query,
         current,
-        vendors: vendors.map((v) => v.label),
-        materials: filamentTypes.map((ft) => ft.name),
-        currency: props.currency,
+        context: {
+          existing_material_types: filamentTypes.map((ft) => ft.name),
+          existing_vendors: vendors.map((v) => v.label),
+          currency: props.currency,
+        },
       },
       signal,
     ) as Promise<FilamentAssistResult>;

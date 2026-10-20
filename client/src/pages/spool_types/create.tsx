@@ -5,8 +5,10 @@ import { Button, Form, Input, InputNumber, Modal, Select } from "antd";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import { useEffect, useMemo, useState } from "react";
+import { AssistButton, useAssistHighlight } from "../../components/assistModal";
 import { getAPIURL } from "../../utils/url";
 import { IVendor } from "../vendors/model";
+import { SpoolTypeAssistModal } from "./assist";
 import { ISpoolType, ISpoolTypeCategory } from "./model";
 
 dayjs.extend(utc);
@@ -24,6 +26,8 @@ type ISpoolTypeRequest = {
 
 export const SpoolTypeCreate = (props: IResourceComponentsProps & CreateOrCloneProps) => {
   const t = useTranslate();
+  const [isAssistOpen, setIsAssistOpen] = useState(false);
+  const assist = useAssistHighlight();
 
   const { form, formProps, formLoading, onFinish, redirect } = useForm<
     ISpoolType,
@@ -108,6 +112,7 @@ export const SpoolTypeCreate = (props: IResourceComponentsProps & CreateOrCloneP
     <Create
       title={props.mode === "create" ? t("spool_type.titles.create") : t("spool_type.titles.clone")}
       isLoading={formLoading}
+      headerButtons={() => <AssistButton onClick={() => setIsAssistOpen(true)} />}
       footerButtons={() => (
         <>
           <Button type="primary" onClick={() => handleSubmit("list")}>
@@ -119,6 +124,15 @@ export const SpoolTypeCreate = (props: IResourceComponentsProps & CreateOrCloneP
         </>
       )}
     >
+      <SpoolTypeAssistModal
+        open={isAssistOpen}
+        onClose={() => setIsAssistOpen(false)}
+        form={form}
+        onFilled={assist.highlight}
+        vendors={(vendorSelect.options ?? []) as { label: string; value: number }[]}
+        categories={categories}
+        setCategories={setCategories}
+      />
       <Form {...formProps} layout="vertical">
         <Form.Item
           label={t("spool_type.fields.vendor_name")}
@@ -139,7 +153,7 @@ export const SpoolTypeCreate = (props: IResourceComponentsProps & CreateOrCloneP
             }
           />
         </Form.Item>
-        <Form.Item label={t("spool_type.fields.category_name")}>
+        <Form.Item className={assist.cls("spool_type_category_id")} label={t("spool_type.fields.category_name")}>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <Form.Item name={["spool_type_category_id"]} noStyle>
               <Select
@@ -160,6 +174,7 @@ export const SpoolTypeCreate = (props: IResourceComponentsProps & CreateOrCloneP
         </Form.Item>
         <Form.Item
           label={t("spool_type.fields.weight")}
+          className={assist.cls("weight")}
           name={["weight"]}
           rules={[{ required: false, type: "number", min: 0 }]}
         >
@@ -167,6 +182,7 @@ export const SpoolTypeCreate = (props: IResourceComponentsProps & CreateOrCloneP
         </Form.Item>
         <Form.Item
           label={t("spool_type.fields.color")}
+          className={assist.cls("color")}
           name={["color"]}
           rules={[{ required: false }]}
         >

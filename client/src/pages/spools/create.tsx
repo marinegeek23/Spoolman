@@ -6,6 +6,7 @@ import TextArea from "antd/es/input/TextArea";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AssistButton, useAssistHighlight } from "../../components/assistModal";
 import { ExtraFieldFormItem, ParsedExtras, StringifiedExtras } from "../../components/extraFields";
 import { useSpoolmanLocations } from "../../components/otherModels";
 import { searchMatches } from "../../utils/filtering";
@@ -19,6 +20,7 @@ import { createFilamentFromExternal } from "../filaments/functions";
 import { useGetPrintSettings } from "../printing/printing";
 import SpoolQRCodePrintingDialog from "../printing/spoolQrCodePrintingDialog";
 import { getAPIURL } from "../../utils/url";
+import { SpoolAssistModal } from "./assist";
 import { useGetFilamentSelectOptions } from "./functions";
 import { ISpool, ISpoolParsedExtras, WeightToEnter } from "./model";
 
@@ -34,6 +36,8 @@ type ISpoolRequest = Omit<ISpoolParsedExtras, "id" | "registered"> & {
 
 export const SpoolCreate = (props: IResourceComponentsProps & CreateOrCloneProps) => {
   const t = useTranslate();
+  const [isAssistOpen, setIsAssistOpen] = useState(false);
+  const assist = useAssistHighlight();
   const { token } = theme.useToken();
   const { siderCollapsed } = useThemedLayoutContext();
   const siderWidth = siderCollapsed ? 80 : 200;
@@ -315,6 +319,7 @@ export const SpoolCreate = (props: IResourceComponentsProps & CreateOrCloneProps
         <Checkbox checked={addToPrintQueue} onChange={(e) => setAddToPrintQueue(e.target.checked)}>
           {t("spool.form.add_to_print_queue")}
         </Checkbox>
+        <AssistButton onClick={() => setIsAssistOpen(true)} />
         <Select
           allowClear
           placeholder="Print labels preset"
@@ -375,6 +380,13 @@ export const SpoolCreate = (props: IResourceComponentsProps & CreateOrCloneProps
         </>
         )}
       >
+      <SpoolAssistModal
+        open={isAssistOpen}
+        onClose={() => setIsAssistOpen(false)}
+        form={form}
+        onFilled={assist.highlight}
+        filament={selectedFilament as { label: string; weight?: number; spool_weight?: number } | null}
+      />
       <Form {...formProps} layout="vertical">
         <Form.Item
           label={t("spool.fields.first_used")}
@@ -425,6 +437,7 @@ export const SpoolCreate = (props: IResourceComponentsProps & CreateOrCloneProps
         <Form.Item
           label={t("spool.fields.price")}
           help={t("spool.fields_help.price")}
+          className={assist.cls("price")}
           name={["price"]}
           rules={[
             {
@@ -444,6 +457,7 @@ export const SpoolCreate = (props: IResourceComponentsProps & CreateOrCloneProps
         <Form.Item
           label={t("spool.fields.initial_weight")}
           help={t("spool.fields_help.initial_weight")}
+          className={assist.cls("initial_weight")}
           name={["initial_weight"]}
           rules={[
             {
@@ -459,6 +473,7 @@ export const SpoolCreate = (props: IResourceComponentsProps & CreateOrCloneProps
         <Form.Item
           label={t("spool.fields.spool_weight")}
           help={t("spool.fields_help.spool_weight")}
+          className={assist.cls("spool_weight")}
           name={["spool_weight"]}
           rules={[
             {

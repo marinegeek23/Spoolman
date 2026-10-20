@@ -4,9 +4,11 @@ import { Button, Form, Input, InputNumber, Typography } from "antd";
 import TextArea from "antd/es/input/TextArea";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { AssistButton, useAssistHighlight } from "../../components/assistModal";
 import { ExtraFieldFormItem, ParsedExtras, StringifiedExtras } from "../../components/extraFields";
 import { EntityType, useGetFields } from "../../utils/queryFields";
+import { VendorAssistModal } from "./assist";
 import { IVendor, IVendorParsedExtras } from "./model";
 
 dayjs.extend(utc);
@@ -17,6 +19,8 @@ interface CreateOrCloneProps {
 
 export const VendorCreate = (props: IResourceComponentsProps & CreateOrCloneProps) => {
   const t = useTranslate();
+  const [isAssistOpen, setIsAssistOpen] = useState(false);
+  const assist = useAssistHighlight();
   const extraFields = useGetFields(EntityType.vendor);
 
   const { form, formProps, formLoading, onFinish, redirect } = useForm<
@@ -56,6 +60,7 @@ export const VendorCreate = (props: IResourceComponentsProps & CreateOrCloneProp
     <Create
       title={props.mode === "create" ? t("vendor.titles.create") : t("vendor.titles.clone")}
       isLoading={formLoading}
+      headerButtons={() => <AssistButton onClick={() => setIsAssistOpen(true)} />}
       footerButtons={() => (
         <>
           <Button type="primary" onClick={() => handleSubmit("list")}>
@@ -67,9 +72,16 @@ export const VendorCreate = (props: IResourceComponentsProps & CreateOrCloneProp
         </>
       )}
     >
+      <VendorAssistModal
+        open={isAssistOpen}
+        onClose={() => setIsAssistOpen(false)}
+        form={form}
+        onFilled={assist.highlight}
+      />
       <Form {...formProps} layout="vertical">
         <Form.Item
           label={t("vendor.fields.name")}
+          className={assist.cls("name")}
           name={["name"]}
           rules={[
             {
@@ -93,6 +105,7 @@ export const VendorCreate = (props: IResourceComponentsProps & CreateOrCloneProp
         <Form.Item
           label={t("vendor.fields.empty_spool_weight")}
           help={t("vendor.fields_help.empty_spool_weight")}
+          className={assist.cls("empty_spool_weight")}
           name={["empty_spool_weight"]}
           rules={[
             {

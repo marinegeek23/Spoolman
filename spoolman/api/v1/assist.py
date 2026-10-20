@@ -1,6 +1,7 @@
 """AI assist API."""
 
 import logging
+from typing import Literal
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -33,14 +34,17 @@ async def status() -> AssistStatus:
 
 
 @router.post(
-    "/filament",
-    name="Look up filament info",
-    response_model=assist.FilamentAssistResponse,
+    "/{task}",
+    name="Look up info for a form",
+    response_model=assist.AssistResponse,
     responses={400: {"model": Message}},
 )
-async def filament(body: assist.FilamentAssistRequest) -> assist.FilamentAssistResponse | JSONResponse:
-    """Look up a filament on the web and return suggested form field values."""
+async def lookup(
+    task: Literal["filament", "vendor", "filament_type", "spool_type", "spool"],
+    body: assist.AssistRequest,
+) -> assist.AssistResponse | JSONResponse:
+    """Look something up on the web and return suggested form field values."""
     try:
-        return await assist.lookup_filament(body)
+        return await assist.lookup(task, body)
     except assist.AssistError as e:
         return JSONResponse(status_code=400, content=Message(message=str(e)).model_dump())
