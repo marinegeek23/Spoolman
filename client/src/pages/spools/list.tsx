@@ -14,7 +14,7 @@ import { useInvalidate, useNavigation, useTranslate } from "@refinedev/core";
 import { Button, Dropdown, Input, Modal, Table } from "antd";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   Action,
@@ -128,9 +128,26 @@ export const SpoolList = () => {
   const [nameSearch, setNameSearch] = useState("");
   const [idSearch, setIdSearch] = useState("");
 
+  // Ref so the setTimeout callback always sees the latest filters without needing
+  // filters in the dependency array (which would cause an infinite loop).
+  const filtersRef = useRef<typeof filters>([]);
+
+  // Track whether the initial mount has been handled so we can skip the
+  // automatic setFilters call that would reset the page to 1 every load.
+  const didMountRef = useRef(false);
+
   useEffect(() => {
+    // Skip the very first firing when all boxes are empty — there is nothing to
+    // apply, and calling setFilters would trigger Refine's internal
+    // setCurrentPage(1), wiping saved page state.
+    const isFirstRun = !didMountRef.current;
+    didMountRef.current = true;
+    if (isFirstRun && !brandSearch.trim() && !nameSearch.trim() && !idSearch.trim()) {
+      return;
+    }
+
     const timer = setTimeout(() => {
-      const otherFilters = filters.filter(
+      const otherFilters = filtersRef.current.filter(
         (f) => "field" in f && !["filament.vendor.name", "filament.name", "id"].includes(f.field),
       );
       const newFilters = [...otherFilters];
@@ -189,6 +206,9 @@ export const SpoolList = () => {
         },
       },
     });
+
+  // Keep the ref in sync so the search useEffect always reads the latest filters.
+  filtersRef.current = filters;
 
   // Create state for the columns to show
   const [showColumns, setShowColumns] = useState<string[]>(initialState.showColumns ?? defaultColumns);
@@ -373,6 +393,9 @@ export const SpoolList = () => {
               setFilters([], "replace");
               setSorters([{ field: "id", order: "asc" }]);
               setCurrentPage(1);
+              setBrandSearch("");
+              setNameSearch("");
+              setIdSearch("");
             }}
           >
             {t("buttons.clearFilters")}
