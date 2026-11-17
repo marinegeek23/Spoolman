@@ -65,6 +65,10 @@ General rules:
 - Prefer manufacturers' own product pages and technical data sheets; retailer listings are the next best.
 - Entries from SpoolmanDB (a curated community database) are provided when they look relevant; trust them \
 when they clearly match, and only search the web for what they don't cover.
+- If the query is a URL and fetching it fails or is blocked (Amazon and many retailers block fetching), \
+do not give up: web search for the product ID from the URL (e.g. the Amazon ASIN), the URL itself, or \
+words in the URL path, and identify the product from search results, other retailers or the \
+manufacturer's site. Only ask the user for the product name if those searches find nothing.
 - Return null for anything you cannot find or reasonably determine. Never invent prices.
 - Leave a field null when the current form value is already correct; only suggest values that add or fix \
 something.
@@ -294,6 +298,20 @@ class AssistError(Exception):
     """Assist lookup failed in a way the user should see."""
 
 
+AMAZON_ASIN = re.compile(r"amazon\.[a-z.]+/(?:.*/)?(?:dp|gp/product|gp/aw/d)/([A-Z0-9]{10})", re.IGNORECASE)
+
+
+def _url_hints(query: str) -> list[str]:
+    """Hints for product URLs the model can't fetch directly."""
+    match = AMAZON_ASIN.search(query)
+    if not match:
+        return []
+    return [
+        f"Amazon ASIN: {match.group(1).upper()}. Amazon blocks page fetching, so don't fetch it; search for "
+        "the ASIN instead to find the product title."
+    ]
+
+
 def _build_user_message(req: AssistRequest, candidates: list[dict[str, Any]] | None) -> str:
     def fmt(value: Any) -> str:  # noqa: ANN401
         if isinstance(value, list):
@@ -301,7 +319,7 @@ def _build_user_message(req: AssistRequest, candidates: list[dict[str, Any]] | N
         return value if isinstance(value, str) else json.dumps(value)
 
     current = {k: v for k, v in req.current.items() if v not in (None, "", [])}
-    parts = [f"Look up: {req.query}", f"Current form values: {json.dumps(current)}"]
+    parts = [f"Look up: {req.query}", *_url_hints(req.query), f"Current form values: {json.dumps(current)}"]
     parts += [f"{key.replace('_', ' ').capitalize()}: {fmt(value)}" for key, value in req.context.items()]
     if candidates is not None:
         parts.append(
